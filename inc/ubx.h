@@ -66,7 +66,7 @@ extern "C"
         uint16_t reserved2;
         uint32_t reserved3;
         float cAcc;
-    } CasicFrameNavPv PACKED;
+    } PACKED CasicFrameNavPv;
 
     bool_t ubx_parse(uint8_t *msg, uint32_t length, uint16_t *classId, void **payload);
 

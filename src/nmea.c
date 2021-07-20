@@ -764,4 +764,6 @@ bool_t nmea_sentence_register_default(NmeaParser *parser)
         .parseFunction = &nmea_parse_zda,
     };
     nmea_sentence_register(parser, &ZDA);
+
+	return true;
 };
