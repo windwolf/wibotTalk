@@ -1,4 +1,4 @@
-#include "../inc/casic.h"
+#include "../inc/ubx.h"
 
 static inline bool_t checksum(uint8_t *msg, uint32_t length)
 {
@@ -13,7 +13,7 @@ static inline bool_t checksum(uint8_t *msg, uint32_t length)
     return (ck_a == p[0]) && (ck_b == p[1]);
 }
 
-bool_t casic_parse(uint8_t *msg, uint32_t length, uint16_t *classId, void **payload)
+bool_t ubx_parse(uint8_t *msg, uint32_t length, uint16_t *classId, void **payload)
 {
     if (!checksum(msg, length))
     {
@@ -23,4 +23,5 @@ bool_t casic_parse(uint8_t *msg, uint32_t length, uint16_t *classId, void **payl
     *classId = *(uint16_t *)msg;
     msg += 4;
     *payload = msg;
+    return true;
 }

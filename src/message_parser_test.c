@@ -278,13 +278,13 @@ static void message_parser_test2_2()
 
     message_parser_create(&parser, "test2_2", &schema, &rb);
 
-    uint8_t wr0Data[42] = {0x33, 0xFA, 0xFB,                                                                    //3
+    uint8_t wr0Data[43] = {0x33, 0xFA, 0xFB,                                                                    //3
                            0xEF, 0xFF, 0x08, 0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x03, 0x04, 0x0E, 0x0F,        //13
                            0xEF, 0xFF, 0x08, 0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x03, 0x04, 0x1E, 0x0F,        //13
-                           0x00, 0xEF, 0xFF, 0x08, 0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x03, 0x04, 0x0E, 0x0F}; //13
+                           0x00, 0xEF, 0xFF, 0x08, 0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x03, 0x04, 0x0E, 0x0F}; //14
 
     uint32_t aw;
-    ringbuffer_write(&rb, wr0Data, 42, true, &aw);
+    ringbuffer_write(&rb, wr0Data, sizeof(wr0Data), true, &aw);
 
     MessageFrame frame;
     OP_RESULT rst;
@@ -325,7 +325,6 @@ static void message_parser_test2_3()
         .prefixSize = 2,
         .cmdLength = MESSAGE_SCHEMA_SIZE_16BITS,
         .mode = MESSAGE_SCHEMA_MODE_DYNAMIC_LENGTH,
-        .dynamic.range = MESSAGE_SCHEMA_RANGE_CONTENT,
         .dynamic.lengthSize = 2,
         .dynamic.range = MESSAGE_SCHEMA_RANGE_PREFIX | MESSAGE_SCHEMA_RANGE_CMD | MESSAGE_SCHEMA_RANGE_LENGTH | MESSAGE_SCHEMA_RANGE_CONTENT | MESSAGE_SCHEMA_RANGE_CRC,
         .crc.length = MESSAGE_SCHEMA_SIZE_8BITS,

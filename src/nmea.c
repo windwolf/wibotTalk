@@ -1,5 +1,5 @@
 
-#include "../inc/gps/nmea.h"
+#include "../inc/nmea.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -94,7 +94,7 @@ bool_t nmea_scan(const char *sentence, const char *format, ...)
     va_list ap;
     va_start(ap, format);
 
-    const char *field = sentence;
+    char *field = sentence;
     char c = *sentence;
 #define next_field()                            \
     do                                          \
@@ -103,13 +103,13 @@ bool_t nmea_scan(const char *sentence, const char *format, ...)
         while (minmea_isfield(c))               \
         {                                       \
             crc ^= c;                           \
-            c = ++sentence;                     \
+            c = *++sentence;                    \
         }                                       \
         /* Make sure there is a field there. */ \
         if (c == ',')                           \
         {                                       \
             crc ^= c;                           \
-            c = ++sentence;                     \
+            c = *++sentence;                    \
             field = sentence;                   \
         }                                       \
         else                                    \
@@ -693,7 +693,7 @@ bool_t nmea_sentence_register(NmeaParser *parser, NmeaSentenceEntry *entry)
 
 bool_t nmea_sentence_register_default(NmeaParser *parser)
 {
-    static const NmeaSentenceEntry RMC = {
+    static NmeaSentenceEntry RMC = {
         .id = NMEA_SENTENCE_RMC,
         .idStr = "RMC",
         .talker = NMEA_TALKER_GN,
@@ -702,7 +702,7 @@ bool_t nmea_sentence_register_default(NmeaParser *parser)
     };
     nmea_sentence_register(parser, &RMC);
 
-    static const NmeaSentenceEntry GGA = {
+    static NmeaSentenceEntry GGA = {
         .id = NMEA_SENTENCE_GGA,
         .idStr = "GGA",
         .talker = NMEA_TALKER_GN,
@@ -711,7 +711,7 @@ bool_t nmea_sentence_register_default(NmeaParser *parser)
     };
     nmea_sentence_register(parser, &GGA);
 
-    static const NmeaSentenceEntry GSA = {
+    static NmeaSentenceEntry GSA = {
         .id = NMEA_SENTENCE_GSA,
         .idStr = "GSA",
         .talker = NMEA_TALKER_GN,
@@ -720,7 +720,7 @@ bool_t nmea_sentence_register_default(NmeaParser *parser)
     };
     nmea_sentence_register(parser, &GSA);
 
-    static const NmeaSentenceEntry GLL = {
+    static NmeaSentenceEntry GLL = {
         .id = NMEA_SENTENCE_GLL,
         .idStr = "GLL",
         .talker = NMEA_TALKER_GN,
@@ -729,7 +729,7 @@ bool_t nmea_sentence_register_default(NmeaParser *parser)
     };
     nmea_sentence_register(parser, &GLL);
 
-    static const NmeaSentenceEntry GST = {
+    static NmeaSentenceEntry GST = {
         .id = NMEA_SENTENCE_GST,
         .idStr = "GST",
         .talker = NMEA_TALKER_GN,
@@ -738,7 +738,7 @@ bool_t nmea_sentence_register_default(NmeaParser *parser)
     };
     nmea_sentence_register(parser, &GST);
 
-    static const NmeaSentenceEntry GSV = {
+    static NmeaSentenceEntry GSV = {
         .id = NMEA_SENTENCE_GSV,
         .idStr = "GSV",
         .talker = NMEA_TALKER_GN,
@@ -747,7 +747,7 @@ bool_t nmea_sentence_register_default(NmeaParser *parser)
     };
     nmea_sentence_register(parser, &GSV);
 
-    static const NmeaSentenceEntry VTG = {
+    static NmeaSentenceEntry VTG = {
         .id = NMEA_SENTENCE_VTG,
         .idStr = "VTG",
         .talker = NMEA_TALKER_GN,
@@ -756,7 +756,7 @@ bool_t nmea_sentence_register_default(NmeaParser *parser)
     };
     nmea_sentence_register(parser, &VTG);
 
-    static const NmeaSentenceEntry ZDA = {
+    static NmeaSentenceEntry ZDA = {
         .id = NMEA_SENTENCE_ZDA,
         .idStr = "ZDA",
         .talker = NMEA_TALKER_GN,

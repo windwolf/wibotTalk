@@ -9,9 +9,9 @@ extern "C"
 #include "stdint.h"
 #include "shared.h"
 
-#define PACKED __attribute__((packed))
+#define PACKED __attribute__((__packed__))
 
-    #define UBX_CLASSID_NAV_PVT 0x0701
+#define UBX_CLASSID_NAV_PVT 0x0701
 
     typedef struct UbxFrameNavPvt
     {

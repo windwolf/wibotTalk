@@ -13,7 +13,7 @@ extern "C"
 
 #define CASIC_CLASSID_NAV_PV 0x0301
 
-    typedef struct CasicFrameNavPv
+    typedef struct
     {
         uint32_t runTime;
         uint8_t posValid;
@@ -39,7 +39,7 @@ extern "C"
         float heading;
         float sAcc;
         float cAcc;
-    } CasicFrameNavPv PACKED;
+    } PACKED CasicFrameNavPv;
 
     bool_t casic_parse(uint8_t *msg, uint32_t length, uint16_t *classId, void **payload);
 

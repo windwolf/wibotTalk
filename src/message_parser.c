@@ -1,5 +1,5 @@
 #include "stdint.h"
-#include "common/message_parser.h"
+#include "../inc/message_parser.h"
 #include "string.h"
 #include "tx_api.h"
 
@@ -14,7 +14,7 @@ static int8_t _message_parser_block_clear(MessageParser *parser);
 
 static int8_t _message_parser_schema_check(MessageSchema *schema);
 
-static bool_t _message_parser_chars_seek(MessageParser *parser, char *pattern, int8_t *lps, uint8_t patternSize);
+static bool_t _message_parser_chars_seek(MessageParser *parser, uint8_t *pattern, int8_t *lps, uint8_t patternSize);
 
 static int8_t _message_parser_int_try_scan(MessageParser *parser, MESSAGE_SCHEMA_SIZE size, MESSAGE_SCHEMA_LENGTH_ENDIAN endian, uint32_t *value);
 
@@ -33,9 +33,9 @@ static void _message_parser_context_preparing(MessageParser *parser);
  * @arg 
  * @return 0=success, -1=dismatch, 1=not enough chars
  * */
-static int8_t _message_parser_chars_scan(MessageParser *parser, char *pattern, uint8_t size);
+static int8_t _message_parser_chars_scan(MessageParser *parser, uint8_t *pattern, uint8_t size);
 
-static void _message_parser_pattern_nexts_generate(char *p, uint8_t M, int8_t *next);
+static void _message_parser_pattern_nexts_generate(uint8_t *p, uint8_t M, int8_t *next);
 
 int8_t message_parser_create(MessageParser *parser, char *name,
                              MessageSchema *schema,
@@ -300,7 +300,7 @@ static int8_t _message_parser_schema_check(MessageSchema *schema)
     return 0;
 };
 
-static void _message_parser_pattern_nexts_generate(char *p, uint8_t M, int8_t *next)
+static void _message_parser_pattern_nexts_generate(uint8_t *p, uint8_t M, int8_t *next)
 {
     next[0] = 0;
     int k = 0;
@@ -387,7 +387,7 @@ static bool_t _message_parser_schema_compare(MessageSchema *a, MessageSchema *b)
     case MESSAGE_SCHEMA_MODE_DYNAMIC_LENGTH:
         rst = a->dynamic.lengthSize == b->dynamic.lengthSize &&
               a->dynamic.endian == b->dynamic.endian &&
-              a->dynamic.range == a->dynamic.range;
+              a->dynamic.range == b->dynamic.range;
         break;
     case MESSAGE_SCHEMA_MODE_FREE_LENGTH:
 
@@ -406,7 +406,7 @@ static bool_t _message_parser_schema_compare(MessageSchema *a, MessageSchema *b)
             return false;
         }
     }
-    for (uint8_t i = 0; i < a->suffix; i++)
+    for (uint8_t i = 0; i < a->suffixSize; i++)
     {
         if (a->suffix[i] != b->suffix[i])
         {
@@ -513,7 +513,7 @@ static int8_t _message_parser_int_try_scan(MessageParser *parser, MESSAGE_SCHEMA
     return true;
 };
 
-static bool_t _message_parser_chars_seek(MessageParser *parser, char *pattern, int8_t *next, uint8_t patternSize)
+static bool_t _message_parser_chars_seek(MessageParser *parser, uint8_t *pattern, int8_t *next, uint8_t patternSize)
 {
     RingBuffer *buffer = parser->buffer;
     uint32_t totalLength = ringbuffer_count_get(buffer);
@@ -559,7 +559,7 @@ static bool_t _message_parser_chars_seek(MessageParser *parser, char *pattern, i
  * @arg 
  * @return 1=success, -1=dismatch, 0=not enough chars
  * */
-static int8_t _message_parser_chars_scan(MessageParser *parser, char *pattern, uint8_t size)
+static int8_t _message_parser_chars_scan(MessageParser *parser, uint8_t *pattern, uint8_t size)
 {
     RingBuffer *buffer = parser->buffer;
     uint32_t totalLength = ringbuffer_count_get(buffer);
@@ -677,9 +677,11 @@ OP_RESULT message_parser_frame_content_extract(MessageFrame *frame, uint8_t *buf
 OP_RESULT message_parser_frame_peek(MessageFrame *frame, uint32_t offset, uint8_t *data)
 {
     *data = *(uint8_t *)ringbuffer_offset_peek_directly(frame->_parser->buffer, offset);
+	return OP_RESULT_OK;
 };
 
 OP_RESULT message_parser_frame_content_peek(MessageFrame *frame, uint32_t offset, uint8_t *data)
 {
     *data = *(uint8_t *)ringbuffer_offset_peek_directly(frame->_parser->buffer, frame->contentStartOffset + offset);
+	return OP_RESULT_OK;
 };
