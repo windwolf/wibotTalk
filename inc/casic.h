@@ -41,7 +41,7 @@ extern "C"
         float cAcc;
     } PACKED CasicFrameNavPv;
 
-    bool_t casic_parse(uint8_t *msg, uint32_t length, uint16_t *classId, void **payload);
+    bool casic_parse(uint8_t *msg, uint32_t length, uint16_t *classId, void **payload);
 
 #ifdef __cplusplus
 }

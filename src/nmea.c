@@ -35,7 +35,7 @@ uint8_t nmea_checksum(const char *sentence)
     return checksum;
 }
 
-bool_t minmea_check(const char *sentence, bool_t strict)
+bool minmea_check(const char *sentence, bool strict)
 {
     uint8_t checksum = 0x00;
 
@@ -81,15 +81,15 @@ bool_t minmea_check(const char *sentence, bool_t strict)
     return true;
 }
 
-static inline bool_t minmea_isfield(char c)
+static inline bool minmea_isfield(char c)
 {
     return isprint((unsigned char)c) && c != ',' && c != '*';
 }
 
-bool_t nmea_scan(const char *sentence, const char *format, ...)
+bool nmea_scan(const char *sentence, const char *format, ...)
 {
-    bool_t result = false;
-    bool_t optional = false;
+    bool result = false;
+    bool optional = false;
     uint8_t crc = 0;
     va_list ap;
     va_start(ap, format);
@@ -396,7 +396,7 @@ parse_error:
     return result;
 }
 
-bool_t nmea_talker_id(char talker[3], const char *sentence)
+bool nmea_talker_id(char talker[3], const char *sentence)
 {
     char type[6];
     if (!nmea_scan(sentence, "t", type))
@@ -409,7 +409,7 @@ bool_t nmea_talker_id(char talker[3], const char *sentence)
     return true;
 }
 
-bool_t nmea_sentence_entry_get(NmeaParser *parser, const char *sentence, bool_t strict, NmeaSentenceEntry **result)
+bool nmea_sentence_entry_get(NmeaParser *parser, const char *sentence, bool strict, NmeaSentenceEntry **result)
 {
     if (!minmea_check(sentence, strict))
     {
@@ -439,7 +439,7 @@ bool_t nmea_sentence_entry_get(NmeaParser *parser, const char *sentence, bool_t 
     return false;
 }
 
-bool_t nmea_parse_rmc(struct NmeaSentenceRmc *frame, const char *sentence)
+bool nmea_parse_rmc(struct NmeaSentenceRmc *frame, const char *sentence)
 {
     // $GPRMC,081836,A,3751.65,S,14507.36,E,000.0,360.0,130998,011.3,E*62
     char type[6];
@@ -469,7 +469,7 @@ bool_t nmea_parse_rmc(struct NmeaSentenceRmc *frame, const char *sentence)
     return true;
 }
 
-bool_t nmea_parse_gga(struct NmeaSentenceGga *frame, const char *sentence)
+bool nmea_parse_gga(struct NmeaSentenceGga *frame, const char *sentence)
 {
     // $GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*47
     char type[6];
@@ -497,7 +497,7 @@ bool_t nmea_parse_gga(struct NmeaSentenceGga *frame, const char *sentence)
     return true;
 }
 
-bool_t nmea_parse_gsa(struct NmeaSentenceGsa *frame, const char *sentence)
+bool nmea_parse_gsa(struct NmeaSentenceGsa *frame, const char *sentence)
 {
     // $GPGSA,A,3,04,05,,09,12,,,24,,,,,2.5,1.3,2.1*39
     char type[6];
@@ -528,7 +528,7 @@ bool_t nmea_parse_gsa(struct NmeaSentenceGsa *frame, const char *sentence)
     return true;
 }
 
-bool_t nmea_parse_gll(struct NmeaSentenceGll *frame, const char *sentence)
+bool nmea_parse_gll(struct NmeaSentenceGll *frame, const char *sentence)
 {
     // $GPGLL,3723.2475,N,12158.3416,W,161229.487,A,A*41$;
     char type[6];
@@ -552,7 +552,7 @@ bool_t nmea_parse_gll(struct NmeaSentenceGll *frame, const char *sentence)
     return true;
 }
 
-bool_t nmea_parse_gst(struct NmeaSentenceGst *frame, const char *sentence)
+bool nmea_parse_gst(struct NmeaSentenceGst *frame, const char *sentence)
 {
     // $GPGST,024603.00,3.2,6.6,4.7,47.3,5.8,5.6,22.0*58
     char type[6];
@@ -574,7 +574,7 @@ bool_t nmea_parse_gst(struct NmeaSentenceGst *frame, const char *sentence)
     return true;
 }
 
-bool_t nmea_parse_gsv(struct NmeaSentenceGsv *frame, const char *sentence)
+bool nmea_parse_gsv(struct NmeaSentenceGsv *frame, const char *sentence)
 {
     // $GPGSV,3,1,11,03,03,111,00,04,15,270,00,06,01,010,00,13,06,292,00*74
     // $GPGSV,3,3,11,22,42,067,42,24,14,311,43,27,05,244,00,,,,*4D
@@ -613,7 +613,7 @@ bool_t nmea_parse_gsv(struct NmeaSentenceGsv *frame, const char *sentence)
     return true;
 }
 
-bool_t nmea_parse_vtg(struct NmeaSentenceVtg *frame, const char *sentence)
+bool nmea_parse_vtg(struct NmeaSentenceVtg *frame, const char *sentence)
 {
     // $GPVTG,054.7,T,034.4,M,005.5,N,010.2,K*48
     // $GPVTG,156.1,T,140.9,M,0.0,N,0.0,K*41
@@ -647,7 +647,7 @@ bool_t nmea_parse_vtg(struct NmeaSentenceVtg *frame, const char *sentence)
     return true;
 }
 
-bool_t nmea_parse_zda(struct NmeaSentenceZda *frame, const char *sentence)
+bool nmea_parse_zda(struct NmeaSentenceZda *frame, const char *sentence)
 {
     // $GPZDA,201530.00,04,07,2002,00,00*60
     char type[6];
@@ -673,12 +673,12 @@ bool_t nmea_parse_zda(struct NmeaSentenceZda *frame, const char *sentence)
     return true;
 }
 
-bool_t nmea_parse(NmeaSentenceEntry *metadata, void *frame, const char *sentence)
+bool nmea_parse(NmeaSentenceEntry *metadata, void *frame, const char *sentence)
 {
     return metadata->parseFunction(frame, sentence);
 };
 
-bool_t nmea_sentence_register(NmeaParser *parser, NmeaSentenceEntry *entry)
+bool nmea_sentence_register(NmeaParser *parser, NmeaSentenceEntry *entry)
 {
     for (uint32_t i = 0; i < NMEA_SENTENCE_ENTRY_SIZE; i++)
     {
@@ -691,14 +691,14 @@ bool_t nmea_sentence_register(NmeaParser *parser, NmeaSentenceEntry *entry)
     return false;
 };
 
-bool_t nmea_sentence_register_default(NmeaParser *parser)
+bool nmea_sentence_register_default(NmeaParser *parser)
 {
     static NmeaSentenceEntry RMC = {
         .id = NMEA_SENTENCE_RMC,
         .idStr = "RMC",
         .talker = NMEA_TALKER_GN,
         .talkerStr = "GN",
-        .parseFunction = &nmea_parse_rmc,
+        .parseFunction = (NmeaParseFunction)&nmea_parse_rmc,
     };
     nmea_sentence_register(parser, &RMC);
 
@@ -707,7 +707,7 @@ bool_t nmea_sentence_register_default(NmeaParser *parser)
         .idStr = "GGA",
         .talker = NMEA_TALKER_GN,
         .talkerStr = "GN",
-        .parseFunction = &nmea_parse_gga,
+        .parseFunction = (NmeaParseFunction)&nmea_parse_gga,
     };
     nmea_sentence_register(parser, &GGA);
 
@@ -716,7 +716,7 @@ bool_t nmea_sentence_register_default(NmeaParser *parser)
         .idStr = "GSA",
         .talker = NMEA_TALKER_GN,
         .talkerStr = "GN",
-        .parseFunction = &nmea_parse_gsa,
+        .parseFunction = (NmeaParseFunction)&nmea_parse_gsa,
     };
     nmea_sentence_register(parser, &GSA);
 
@@ -725,7 +725,7 @@ bool_t nmea_sentence_register_default(NmeaParser *parser)
         .idStr = "GLL",
         .talker = NMEA_TALKER_GN,
         .talkerStr = "GN",
-        .parseFunction = &nmea_parse_gll,
+        .parseFunction = (NmeaParseFunction)&nmea_parse_gll,
     };
     nmea_sentence_register(parser, &GLL);
 
@@ -734,7 +734,7 @@ bool_t nmea_sentence_register_default(NmeaParser *parser)
         .idStr = "GST",
         .talker = NMEA_TALKER_GN,
         .talkerStr = "GN",
-        .parseFunction = &nmea_parse_gst,
+        .parseFunction = (NmeaParseFunction)&nmea_parse_gst,
     };
     nmea_sentence_register(parser, &GST);
 
@@ -743,7 +743,7 @@ bool_t nmea_sentence_register_default(NmeaParser *parser)
         .idStr = "GSV",
         .talker = NMEA_TALKER_GN,
         .talkerStr = "GN",
-        .parseFunction = &nmea_parse_gsv,
+        .parseFunction = (NmeaParseFunction)&nmea_parse_gsv,
     };
     nmea_sentence_register(parser, &GSV);
 
@@ -752,7 +752,7 @@ bool_t nmea_sentence_register_default(NmeaParser *parser)
         .idStr = "VTG",
         .talker = NMEA_TALKER_GN,
         .talkerStr = "GN",
-        .parseFunction = &nmea_parse_vtg,
+        .parseFunction = (NmeaParseFunction)&nmea_parse_vtg,
     };
     nmea_sentence_register(parser, &VTG);
 
@@ -761,9 +761,9 @@ bool_t nmea_sentence_register_default(NmeaParser *parser)
         .idStr = "ZDA",
         .talker = NMEA_TALKER_GN,
         .talkerStr = "GN",
-        .parseFunction = &nmea_parse_zda,
+        .parseFunction = (NmeaParseFunction)&nmea_parse_zda,
     };
     nmea_sentence_register(parser, &ZDA);
 
-	return true;
+    return true;
 };

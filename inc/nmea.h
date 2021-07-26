@@ -69,7 +69,7 @@ extern "C"
     typedef struct NmeaSentenceRmc
     {
         struct NmeaTime time;
-        bool_t valid;
+        bool valid;
         struct NmeaFloat latitude;
         struct NmeaFloat longitude;
         struct NmeaFloat speed;
@@ -188,7 +188,7 @@ extern "C"
         int minute_offset;
     } NmeaSentenceZda;
 
-    typedef bool_t (*NmeaParseFunction)(void *frame, const char *sentence);
+    typedef bool (*NmeaParseFunction)(void *frame, const char *sentence);
 
     typedef struct NmeaSentenceEntry
     {
@@ -213,17 +213,17 @@ extern "C"
     /**
  * Check sentence validity and checksum. Returns true for valid sentences.
  */
-    bool_t minmea_check(const char *sentence, bool_t strict);
+    bool minmea_check(const char *sentence, bool strict);
 
     /**
  * Determine talker identifier.
  */
-    bool_t nmea_talker_id(char talker[3], const char *sentence);
+    bool nmea_talker_id(char talker[3], const char *sentence);
 
     /**
  * Determine sentence identifier.
  */
-    bool_t nmea_sentence_entry_get(NmeaParser *parser, const char *sentence, bool_t strict, NmeaSentenceEntry **result);
+    bool nmea_sentence_entry_get(NmeaParser *parser, const char *sentence, bool strict, NmeaSentenceEntry **result);
 
     /**
  * Scanf-like processor for NMEA sentences. Supports the following formats:
@@ -236,16 +236,16 @@ extern "C"
  * T - date/time stamp (int *, int *, int *)
  * Returns true on success. See library source code for details.
  */
-    bool_t nmea_scan(const char *sentence, const char *format, ...);
+    bool nmea_scan(const char *sentence, const char *format, ...);
 
     /*
  * Parse a specific type of sentence. Return true on success.
  */
 
-    bool_t nmea_parse(NmeaSentenceEntry *metadata, void *frame, const char *sentence);
+    bool nmea_parse(NmeaSentenceEntry *metadata, void *frame, const char *sentence);
 
-    bool_t nmea_sentence_register(NmeaParser *parser, NmeaSentenceEntry *entry);
-    bool_t nmea_sentence_register_default(NmeaParser *parser);
+    bool nmea_sentence_register(NmeaParser *parser, NmeaSentenceEntry *entry);
+    bool nmea_sentence_register_default(NmeaParser *parser);
 
     //     /**
     //  * Convert GPS UTC date/time representation to a UNIX timestamp.

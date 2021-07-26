@@ -6,7 +6,7 @@
 #define LOG_MODULE "message_parser"
 #include "log.h"
 
-static bool_t _message_parser_schema_compare(MessageSchema *a, MessageSchema *b);
+static bool _message_parser_schema_compare(MessageSchema *a, MessageSchema *b);
 
 static void _message_parser_frame_pack(MessageParser *parser, MessageFrame *parsedFrame);
 
@@ -14,7 +14,7 @@ static int8_t _message_parser_block_clear(MessageParser *parser);
 
 static int8_t _message_parser_schema_check(MessageSchema *schema);
 
-static bool_t _message_parser_chars_seek(MessageParser *parser, uint8_t *pattern, int8_t *lps, uint8_t patternSize);
+static bool _message_parser_chars_seek(MessageParser *parser, uint8_t *pattern, int8_t *lps, uint8_t patternSize);
 
 static int8_t _message_parser_int_try_scan(MessageParser *parser, MESSAGE_SCHEMA_SIZE size, MESSAGE_SCHEMA_LENGTH_ENDIAN endian, uint32_t *value);
 
@@ -93,7 +93,7 @@ OP_RESULT message_parser_frame_get(MessageParser *parser, MessageSchema *customS
         }
     }
     MESSAGE_SCHEMA_MODE mode = schema->mode;
-    bool_t result = false;
+    bool result = false;
     switch (stage)
     {
     case MESSAGE_PARSE_STAGE_INIT:
@@ -351,9 +351,9 @@ static void _message_parser_context_preparing(MessageParser *parser)
     }
 };
 
-static bool_t _message_parser_schema_compare(MessageSchema *a, MessageSchema *b)
+static bool _message_parser_schema_compare(MessageSchema *a, MessageSchema *b)
 {
-    bool_t rst;
+    bool rst;
     rst = a == b;
     if (rst)
     {
@@ -513,7 +513,7 @@ static int8_t _message_parser_int_try_scan(MessageParser *parser, MESSAGE_SCHEMA
     return true;
 };
 
-static bool_t _message_parser_chars_seek(MessageParser *parser, uint8_t *pattern, int8_t *next, uint8_t patternSize)
+static bool _message_parser_chars_seek(MessageParser *parser, uint8_t *pattern, int8_t *next, uint8_t patternSize)
 {
     RingBuffer *buffer = parser->buffer;
     uint32_t totalLength = ringbuffer_count_get(buffer);
@@ -677,11 +677,11 @@ OP_RESULT message_parser_frame_content_extract(MessageFrame *frame, uint8_t *buf
 OP_RESULT message_parser_frame_peek(MessageFrame *frame, uint32_t offset, uint8_t *data)
 {
     *data = *(uint8_t *)ringbuffer_offset_peek_directly(frame->_parser->buffer, offset);
-	return OP_RESULT_OK;
+    return OP_RESULT_OK;
 };
 
 OP_RESULT message_parser_frame_content_peek(MessageFrame *frame, uint32_t offset, uint8_t *data)
 {
     *data = *(uint8_t *)ringbuffer_offset_peek_directly(frame->_parser->buffer, frame->contentStartOffset + offset);
-	return OP_RESULT_OK;
+    return OP_RESULT_OK;
 };

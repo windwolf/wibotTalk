@@ -1,6 +1,6 @@
 #include "../inc/casic.h"
 
-static inline bool_t checksum(uint8_t *msg, uint32_t length)
+static inline bool checksum(uint8_t *msg, uint32_t length)
 {
     uint32_t *p = (uint32_t *)(msg + 2);
     uint32_t l = (length - 6) / 4;
@@ -12,7 +12,7 @@ static inline bool_t checksum(uint8_t *msg, uint32_t length)
     return checksum == *p;
 }
 
-bool_t casic_parse(uint8_t *msg, uint32_t length, uint16_t *classId, void **payload)
+bool casic_parse(uint8_t *msg, uint32_t length, uint16_t *classId, void **payload)
 {
     if (!checksum(msg, length))
     {
@@ -22,5 +22,5 @@ bool_t casic_parse(uint8_t *msg, uint32_t length, uint16_t *classId, void **payl
     *classId = *(uint16_t *)msg;
     msg += 2;
     *payload = msg;
-	return true;
+    return true;
 }

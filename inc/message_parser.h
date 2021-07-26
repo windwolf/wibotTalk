@@ -120,7 +120,7 @@ extern "C"
         uint8_t crc[MESSAGE_PARSER_CMD_CRC_BUFFER_SIZE];
 
         struct MessageParser *_parser;
-        bool_t _released;
+        bool _released;
     } MessageFrame;
 
     // typedef struct PacketParserContext
