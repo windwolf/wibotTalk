@@ -1,9 +1,9 @@
-#include "../inc/console.h"
+#include "../inc/tree_accessor.h"
 
 #include <ctype.h>
 #include <string.h>
 
-#define LOG_MODULE "console"
+#define LOG_MODULE "tree_accessor"
 #include "log.h"
 
 typedef enum
@@ -26,21 +26,21 @@ typedef enum
     action_context_sync,
 } ConsoleAction;
 
-static inline token_type _console_next_token(const char *path, char const **token, char const **end, int32_t *size);
-static inline bool _console_ctx_update(ConsoleContext *ctx, char *identity, int identitySize, int index);
-static void _console_init(Console *console);
+static inline token_type _tree_accessor_next_token(const char *path, char const **token, char const **end, int32_t *size);
+static inline bool _tree_accessor_ctx_update(TreeAccessorContext *ctx, char *identity, int identitySize, int index);
+static void _tree_accessor_init(TreeAccessor *console);
 
-static void _console_evaluate(Console *console, void *in, void **out, ConsoleAction action);
-static bool _console_path_parse(Console *console, const char *path);
-static ConsoleItemEntry *_console_entry_child_find(ConsoleItemEntry *entry, const char *identity, int size);
-static int _console_match_name(const ConsoleItemEntry *entry, const char *name);
+static void _tree_accessor_evaluate(TreeAccessor *console, void *in, void **out, ConsoleAction action);
+static bool _tree_accessor_path_parse(TreeAccessor *console, const char *path);
+static TreeAccessorItemEntry *_tree_accessor_entry_child_find(TreeAccessorItemEntry *entry, const char *identity, int size);
+static int _tree_accessor_match_name(const TreeAccessorItemEntry *entry, const char *name);
 
-bool console_item_register(Console *console, const char *containerPath, ConsoleItemEntry *entry)
+bool tree_accessor_item_register(TreeAccessor *console, const char *containerPath, TreeAccessorItemEntry *entry)
 {
     if (containerPath == NULL || !strcmp(containerPath, ""))
     {
         console->root = entry;
-        _console_init(console);
+        _tree_accessor_init(console);
         return true;
     }
     if (console->root == NULL)
@@ -48,14 +48,14 @@ bool console_item_register(Console *console, const char *containerPath, ConsoleI
         LOG_E("root not exist");
         return false;
     }
-    if (!_console_path_parse(console, containerPath))
+    if (!_tree_accessor_path_parse(console, containerPath))
     {
         LOG_E("container not exist");
         return false;
     }
-    ConsoleItemEntry *container = console->context._parsedNodes[console->context._currentParsedNodeIndex].currentEntry;
+    TreeAccessorItemEntry *container = console->context._parsedNodes[console->context._currentParsedNodeIndex].currentEntry;
 
-    if (tree_child_find((Tree *)container, entry->name, (CompareFunction)&_console_match_name) != NULL)
+    if (tree_child_find((Tree *)container, entry->name, (CompareFunction)&_tree_accessor_match_name) != NULL)
     {
         LOG_E("%s already exist", entry->name);
         return false;
@@ -64,40 +64,40 @@ bool console_item_register(Console *console, const char *containerPath, ConsoleI
     return true;
 };
 
-bool console_context_change(Console *console, const char *path)
+bool tree_accessor_context_change(TreeAccessor *console, const char *path)
 {
-    if (!_console_path_parse(console, path))
+    if (!_tree_accessor_path_parse(console, path))
     {
         return false;
     }
-    _console_evaluate(console, NULL, NULL, action_context_sync);
+    _tree_accessor_evaluate(console, NULL, NULL, action_context_sync);
     console->context.path[0] = '\0';
     return true;
 }
 
-bool console_value_set(Console *console, const char *path, void *value)
+bool tree_accessor_value_set(TreeAccessor *console, const char *path, void *value)
 {
-    if (!_console_path_parse(console, path))
+    if (!_tree_accessor_path_parse(console, path))
     {
         return false;
     }
-    _console_evaluate(console, value, NULL, action_set);
+    _tree_accessor_evaluate(console, value, NULL, action_set);
     return true;
 };
 
-bool console_value_get(Console *console, const char *path, void **value)
+bool tree_accessor_value_get(TreeAccessor *console, const char *path, void **value)
 {
-    if (!_console_path_parse(console, path))
+    if (!_tree_accessor_path_parse(console, path))
     {
         return false;
     }
-    _console_evaluate(console, NULL, value, action_get);
+    _tree_accessor_evaluate(console, NULL, value, action_get);
     return true;
 };
 
-char *console_context_path_get(Console *console)
+char *tree_accessor_context_path_get(TreeAccessor *console)
 {
-    ConsoleContext *ctx = &console->context;
+    TreeAccessorContext *ctx = &console->context;
     if (ctx->path[0] != '\0')
     {
         return ctx->path;
@@ -119,22 +119,22 @@ char *console_context_path_get(Console *console)
         {
             char it[16];
             itoa(ctx->contextNodes[i].index, it, 10);
-			strlcat(ctx->path, "[", CONSOLE_PATH_MAX_SIZE);
+            strlcat(ctx->path, "[", CONSOLE_PATH_MAX_SIZE);
             strlcat(ctx->path, it, CONSOLE_PATH_MAX_SIZE);
-			strlcat(ctx->path, "]", CONSOLE_PATH_MAX_SIZE);
+            strlcat(ctx->path, "]", CONSOLE_PATH_MAX_SIZE);
         }
     }
     return ctx->path;
 }
 
-char **console_item_list(Console *console, const char *path)
+char **tree_accessor_item_list(TreeAccessor *console, const char *path)
 {
-    if (!_console_path_parse(console, path))
+    if (!_tree_accessor_path_parse(console, path))
     {
         return NULL;
     }
-    ConsolePathNode *node = &console->context._parsedNodes[console->context._currentParsedNodeIndex];
-    ConsoleItemEntry *child = (ConsoleItemEntry *)node->currentEntry->base.child;
+    TreeAccessorPathNode *node = &console->context._parsedNodes[console->context._currentParsedNodeIndex];
+    TreeAccessorItemEntry *child = (TreeAccessorItemEntry *)node->currentEntry->base.child;
     for (size_t i = 0; i < CONSOLE_CHILDREN_MAX_SIZE; i++)
     {
         if (child != NULL)
@@ -151,18 +151,18 @@ char **console_item_list(Console *console, const char *path)
     return console->_listBuf;
 };
 
-static void _console_evaluate(Console *console, void *in, void **out, ConsoleAction action)
+static void _tree_accessor_evaluate(TreeAccessor *console, void *in, void **out, ConsoleAction action)
 {
-    ConsoleContext *ctx = &console->context;
+    TreeAccessorContext *ctx = &console->context;
     int32_t cIdx = ctx->_currentParsedNodeIndex;
-    ConsolePathNode *pNode;
+    TreeAccessorPathNode *pNode;
     if (action == action_context_sync)
     {
         for (int32_t i = ctx->_parsedNodeBackTrace + 1; i <= cIdx; i++)
         {
             pNode = &ctx->_parsedNodes[i];
-            ConsolePathContextNode *cNode = &ctx->contextNodes[i];
-            ConsolePathContextNode *cNodeParent = &ctx->contextNodes[i - 1];
+            TreeAccessorPathContextNode *cNode = &ctx->contextNodes[i];
+            TreeAccessorPathContextNode *cNodeParent = &ctx->contextNodes[i - 1];
 
             cNode->currentEntry = pNode->currentEntry;
             cNode->index = pNode->index;
@@ -173,7 +173,7 @@ static void _console_evaluate(Console *console, void *in, void **out, ConsoleAct
     else
     {
         void *parentData;
-        ConsolePathContextNode *parentNode = &ctx->contextNodes[ctx->_parsedNodeBackTrace];
+        TreeAccessorPathContextNode *parentNode = &ctx->contextNodes[ctx->_parsedNodeBackTrace];
         parentNode->currentEntry->accessor(parentNode->parentData, parentNode->index, NULL, &parentData, false);
 
         for (int32_t i = ctx->_parsedNodeBackTrace + 1; i <= cIdx - 1; i++)
@@ -207,7 +207,7 @@ static void _console_evaluate(Console *console, void *in, void **out, ConsoleAct
                     ↑                                       |
                     └--------------- / ---------------------┘
 */
-static bool _console_path_parse(Console *console, const char *path)
+static bool _tree_accessor_path_parse(TreeAccessor *console, const char *path)
 {
     if (path == NULL || !strcmp(path, ""))
     {
@@ -219,7 +219,7 @@ static bool _console_path_parse(Console *console, const char *path)
     int32_t index;
     char *id;
     int32_t idSize;
-    ConsoleContext *ctx = &console->context;
+    TreeAccessorContext *ctx = &console->context;
 #define next_token() t = _console_next_token(path, &token, &path, &tokenSize)
     next_token();
 n00:
@@ -304,7 +304,7 @@ n30:
 n40:
     if (t == token_slash)
     {
-        if (!_console_ctx_update(ctx, id, idSize, index))
+        if (!_tree_accessor_ctx_update(ctx, id, idSize, index))
         {
             return false;
         }
@@ -315,7 +315,7 @@ n40:
 n50:
     if (t == token_end)
     {
-        if (!_console_ctx_update(ctx, id, idSize, index))
+        if (!_tree_accessor_ctx_update(ctx, id, idSize, index))
         {
             return false;
         }
@@ -331,9 +331,9 @@ error:
     return false;
 };
 
-static ConsoleItemEntry *_console_entry_child_find(ConsoleItemEntry *entry, const char *identity, int size)
+static TreeAccessorItemEntry *_tree_accessor_entry_child_find(TreeAccessorItemEntry *entry, const char *identity, int size)
 {
-    const ConsoleItemEntry *child = entry->base.child;
+    const TreeAccessorItemEntry *child = entry->base.child;
     while (child != NULL)
     {
         if (!strncmp(child->name, identity, size))
@@ -345,7 +345,7 @@ static ConsoleItemEntry *_console_entry_child_find(ConsoleItemEntry *entry, cons
     return NULL;
 };
 
-static inline bool _console_ctx_update(ConsoleContext *ctx, char *identity, int identitySize, int index)
+static inline bool _tree_accessor_ctx_update(TreeAccessorContext *ctx, char *identity, int identitySize, int index)
 {
     if (!strncmp(identity, "/", identitySize))
     {
@@ -375,8 +375,8 @@ static inline bool _console_ctx_update(ConsoleContext *ctx, char *identity, int 
             return false;
         }
 
-        ConsolePathNode *parentNode = &ctx->_parsedNodes[idx];
-        ConsoleItemEntry *curEntry = _console_entry_child_find(parentNode->currentEntry, identity, identitySize);
+        TreeAccessorPathNode *parentNode = &ctx->_parsedNodes[idx];
+        TreeAccessorItemEntry *curEntry = _tree_accessor_entry_child_find(parentNode->currentEntry, identity, identitySize);
         if (curEntry == NULL)
         {
             LOG_E("identity not exist");
@@ -390,7 +390,7 @@ static inline bool _console_ctx_update(ConsoleContext *ctx, char *identity, int 
     }
 };
 
-static inline token_type _console_next_token(const char *path, char const **token, char const **end, int32_t *size)
+static inline token_type _tree_accessor_next_token(const char *path, char const **token, char const **end, int32_t *size)
 {
 #define next()       \
     do               \
@@ -490,9 +490,9 @@ static inline token_type _console_next_token(const char *path, char const **toke
     }
 }
 
-static void _console_init(Console *console)
+static void _tree_accessor_init(TreeAccessor *console)
 {
-    ConsoleItemEntry *root = console->root;
+    TreeAccessorItemEntry *root = console->root;
     root->name = "/";
     console->context.contextNodes[0].currentEntry = root;
     console->context.contextNodes[0].index = -1;
@@ -508,7 +508,7 @@ static void _console_init(Console *console)
     console->context.path[1] = 0x00;
 };
 
-static int _console_match_name(const ConsoleItemEntry *entry, const char *name)
+static int _tree_accessor_match_name(const TreeAccessorItemEntry *entry, const char *name)
 {
     return strcmp(entry->name, name);
 };
