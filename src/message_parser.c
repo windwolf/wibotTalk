@@ -204,13 +204,15 @@ OP_RESULT message_parser_frame_get(MessageParser *parser, MessageSchema *customS
             }
             else
             {
-                result = _message_parser_chars_scan(parser, schema->suffix, schema->suffixSize);
-                if (result == 1)
+                int8_t msrst = _message_parser_chars_scan(parser, schema->suffix, schema->suffixSize);
+                if (msrst == 1)
                 {
+                    result = 1;
                     // success
                 }
-                else if (result == 0) // not enough buf
+                else if (msrst == 0) // not enough buf
                 {
+                    result = 0;
                     stage = MESSAGE_PARSE_STAGE_MATCHING_SUFFIX;
                     break;
                 }

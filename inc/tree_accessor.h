@@ -10,8 +10,8 @@
  * 
  */
 
-#ifndef ___CONSOLE_H__
-#define ___CONSOLE_H__
+#ifndef ___TREE_ACCESSOR_H__
+#define ___TREE_ACCESSOR_H__
 
 #ifdef __cplusplus
 extern "C"
@@ -89,4 +89,4 @@ extern "C"
 }
 #endif
 
-#endif // ___CONSOLE_H__
+#endif // ___TREE_ACCESSOR_H__

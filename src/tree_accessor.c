@@ -220,7 +220,7 @@ static bool _tree_accessor_path_parse(TreeAccessor *console, const char *path)
     char *id;
     int32_t idSize;
     TreeAccessorContext *ctx = &console->context;
-#define next_token() t = _console_next_token(path, &token, &path, &tokenSize)
+#define next_token() t = _tree_accessor_next_token(path, &token, &path, &tokenSize)
     next_token();
 n00:
     if (t == token_slash)

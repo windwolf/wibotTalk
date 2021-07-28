@@ -39,23 +39,23 @@ static void message_parser_test1_1()
 
     // test1_1:1
     rst = message_parser_frame_get(&parser, NULL, &frame);
-    MU_ASSERT("test1_1:1 X", rst != OP_RESULT_OK);
+    MU_ASSERT(rst != OP_RESULT_OK);
     uint8_t fData[8];
     if (rst == OP_RESULT_OK)
     {
         MU_VEC_CLEAR(fData, 8);
         message_parser_frame_content_extract(&frame, fData);
-        MU_ASSERT_VEC_EQUALS("test1_1:1r X", fData, refData, 8);
+        MU_ASSERT_VEC_EQUALS(fData, refData, 8);
     }
 
     // test1_1:2
     rst = message_parser_frame_get(&parser, NULL, &frame);
-    MU_ASSERT("test1_1:2 X", rst == OP_RESULT_OK);
+    MU_ASSERT(rst == OP_RESULT_OK);
     if (rst == OP_RESULT_OK)
     {
         MU_VEC_CLEAR(fData, 8);
         message_parser_frame_content_extract(&frame, fData);
-        MU_ASSERT_VEC_EQUALS("test1_1:2r X", fData, refData, 8);
+        MU_ASSERT_VEC_EQUALS(fData, refData, 8);
     }
 
     MessageSchema schema2 = {
@@ -70,12 +70,12 @@ static void message_parser_test1_1()
 
     // test1_1:3
     rst = message_parser_frame_get(&parser, &schema2, &frame);
-    MU_ASSERT("test1_1:3 X", rst == OP_RESULT_OK);
+    MU_ASSERT(rst == OP_RESULT_OK);
     if (rst == OP_RESULT_OK)
     {
         MU_VEC_CLEAR(fData, 8);
         message_parser_frame_content_extract(&frame, fData);
-        MU_ASSERT_VEC_EQUALS("test1_1:3r X", fData, refData, 8);
+        MU_ASSERT_VEC_EQUALS(fData, refData, 8);
     }
 
     uint8_t wr4Data[17] = {0xFA, 0xFB, 0xFC, 0xFD, 0xFA, 0xFB, 0xFD, 0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x03, 0x04, 0x0E, 0x0F};
@@ -83,12 +83,12 @@ static void message_parser_test1_1()
 
     // test1_1:4
     rst = message_parser_frame_get(&parser, NULL, &frame);
-    MU_ASSERT("test1_1:4 X", rst == OP_RESULT_OK);
+    MU_ASSERT(rst == OP_RESULT_OK);
     if (rst == OP_RESULT_OK)
     {
         MU_VEC_CLEAR(fData, 8);
         message_parser_frame_content_extract(&frame, fData);
-        MU_ASSERT_VEC_EQUALS("test1_1:4r X", fData, refData, 8);
+        MU_ASSERT_VEC_EQUALS(fData, refData, 8);
     }
 
     uint8_t wr5Data[12] = {0xEF, 0xFF, 0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x03, 0x04, 0x0E, 0x0F};
@@ -96,12 +96,12 @@ static void message_parser_test1_1()
 
     // test1_1:5
     rst = message_parser_frame_get(&parser, &schema2, &frame);
-    MU_ASSERT("test1_1:5 X", rst == OP_RESULT_OK);
+    MU_ASSERT(rst == OP_RESULT_OK);
     if (rst == OP_RESULT_OK)
     {
         MU_VEC_CLEAR(fData, 8);
         message_parser_frame_content_extract(&frame, fData);
-        MU_ASSERT_VEC_EQUALS("test1_1:5r X", fData, refData, 8);
+        MU_ASSERT_VEC_EQUALS(fData, refData, 8);
     }
 }
 
@@ -139,22 +139,22 @@ static void message_parser_test1_2()
     OP_RESULT rst;
     // test1_2:1
     rst = message_parser_frame_get(&parser, NULL, &frame); //1
-    MU_ASSERT("test1_2:1 X", rst == OP_RESULT_OK);
+    MU_ASSERT(rst == OP_RESULT_OK);
     uint8_t fData[8];
     if (rst == OP_RESULT_OK)
     {
         MU_VEC_CLEAR(fData, 8);
         message_parser_frame_content_extract(&frame, fData);
-        MU_ASSERT_VEC_EQUALS("test1_2:1r X", fData, refData, 8);
+        MU_ASSERT_VEC_EQUALS(fData, refData, 8);
     }
 
     rst = message_parser_frame_get(&parser, NULL, &frame); //1
-    MU_ASSERT("test1_2:2 X", rst == OP_RESULT_OK);
+    MU_ASSERT(rst == OP_RESULT_OK);
     if (rst == OP_RESULT_OK)
     {
         MU_VEC_CLEAR(fData, 8);
         message_parser_frame_content_extract(&frame, fData);
-        MU_ASSERT_VEC_EQUALS("test1_2:2r X", fData, refData, 8);
+        MU_ASSERT_VEC_EQUALS(fData, refData, 8);
     }
 
     MessageSchema schema2 = {
@@ -166,36 +166,36 @@ static void message_parser_test1_2()
         .crc.length = MESSAGE_SCHEMA_SIZE_NONE,
     };
     rst = message_parser_frame_get(&parser, &schema2, &frame); //1
-    MU_ASSERT("test1_2:3 X", rst == OP_RESULT_OK);
+    MU_ASSERT(rst == OP_RESULT_OK);
     if (rst == OP_RESULT_OK)
     {
         MU_VEC_CLEAR(fData, 8);
         message_parser_frame_content_extract(&frame, fData);
-        MU_ASSERT_VEC_EQUALS("test1_2:3r X", fData, refData, 8);
+        MU_ASSERT_VEC_EQUALS(fData, refData, 8);
     }
 
     uint8_t wr4Data[17] = {0xFA, 0xFB, 0xFC, 0xFD, 0xFA, 0xFB, 0xFD, 0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x03, 0x04, 0x0E, 0x0F};
     ringbuffer_write(&rb, wr4Data, 17, true, &aw);
 
     rst = message_parser_frame_get(&parser, NULL, &frame); //1
-    MU_ASSERT("test1_2:4 X", rst == OP_RESULT_OK);
+    MU_ASSERT(rst == OP_RESULT_OK);
     if (rst == OP_RESULT_OK)
     {
         MU_VEC_CLEAR(fData, 8);
         message_parser_frame_content_extract(&frame, fData);
-        MU_ASSERT_VEC_EQUALS("test1_2:4r X", fData, refData, 8);
+        MU_ASSERT_VEC_EQUALS(fData, refData, 8);
     }
 
     uint8_t wr5Data[10] = {0xEF, 0xFF, 0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x03, 0x04}; //1
     ringbuffer_write(&rb, wr5Data, 12, true, &aw);
 
     rst = message_parser_frame_get(&parser, &schema2, &frame); //1
-    MU_ASSERT("test1_2:5 X", rst == OP_RESULT_OK);
+    MU_ASSERT(rst == OP_RESULT_OK);
     if (rst == OP_RESULT_OK)
     {
         MU_VEC_CLEAR(fData, 8);
         message_parser_frame_content_extract(&frame, fData);
-        MU_ASSERT_VEC_EQUALS("test1_2:5r X", fData, refData, 8);
+        MU_ASSERT_VEC_EQUALS(fData, refData, 8);
     }
 }
 
@@ -232,30 +232,30 @@ static void message_parser_test2_1()
     OP_RESULT rst;
     uint8_t fData[8];
     rst = message_parser_frame_get(&parser, &schema, &frame);
-    MU_ASSERT("test2_1:1 X", rst == OP_RESULT_OK);
+    MU_ASSERT(rst == OP_RESULT_OK);
     if (rst == OP_RESULT_OK)
     {
         MU_VEC_CLEAR(fData, 8);
         message_parser_frame_content_extract(&frame, fData);
-        MU_ASSERT_VEC_EQUALS("test2_1:1r X", fData, refData, 8);
+        MU_ASSERT_VEC_EQUALS(fData, refData, 8);
     }
 
     rst = message_parser_frame_get(&parser, &schema, &frame);
-    MU_ASSERT("test2_1:2 X", rst != OP_RESULT_OK);
+    MU_ASSERT(rst != OP_RESULT_OK);
     if (rst == OP_RESULT_OK)
     {
         MU_VEC_CLEAR(fData, 8);
         message_parser_frame_content_extract(&frame, fData);
-        MU_ASSERT_VEC_EQUALS("test2_1:2r X", fData, refData, 8);
+        MU_ASSERT_VEC_EQUALS(fData, refData, 8);
     }
 
     rst = message_parser_frame_get(&parser, &schema, &frame);
-    MU_ASSERT("test2_1:3 X", rst == OP_RESULT_OK);
+    MU_ASSERT(rst == OP_RESULT_OK);
     if (rst == OP_RESULT_OK)
     {
         MU_VEC_CLEAR(fData, 8);
         message_parser_frame_content_extract(&frame, fData);
-        MU_ASSERT_VEC_EQUALS("test2_1:3r X", fData, refData, 8);
+        MU_ASSERT_VEC_EQUALS(fData, refData, 8);
     }
 }
 
@@ -290,30 +290,30 @@ static void message_parser_test2_2()
     OP_RESULT rst;
     uint8_t fData[8];
     rst = message_parser_frame_get(&parser, &schema, &frame);
-    MU_ASSERT("test2_2:1 X", rst == OP_RESULT_OK);
+    MU_ASSERT(rst == OP_RESULT_OK);
     if (rst == OP_RESULT_OK)
     {
         MU_VEC_CLEAR(fData, 8);
         message_parser_frame_content_extract(&frame, fData);
-        MU_ASSERT_VEC_EQUALS("test2_2:1r X", fData, refData, 8);
+        MU_ASSERT_VEC_EQUALS(fData, refData, 8);
     }
 
     rst = message_parser_frame_get(&parser, &schema, &frame);
-    MU_ASSERT("test2_2:2 X", rst == OP_RESULT_OK);
+    MU_ASSERT(rst == OP_RESULT_OK);
     if (rst == OP_RESULT_OK)
     {
         MU_VEC_CLEAR(fData, 8);
         message_parser_frame_content_extract(&frame, fData);
-        MU_ASSERT_VEC_EQUALS("test2_2:2r X", fData, refData, 8);
+        MU_ASSERT_VEC_EQUALS(fData, refData, 8);
     }
 
     rst = message_parser_frame_get(&parser, &schema, &frame);
-    MU_ASSERT("test2_2:3 X", rst == OP_RESULT_OK);
+    MU_ASSERT(rst == OP_RESULT_OK);
     if (rst == OP_RESULT_OK)
     {
         MU_VEC_CLEAR(fData, 8);
         message_parser_frame_content_extract(&frame, fData);
-        MU_ASSERT_VEC_EQUALS("test2_2:3r X", fData, refData, 8);
+        MU_ASSERT_VEC_EQUALS(fData, refData, 8);
     }
 }
 
@@ -351,50 +351,50 @@ static void message_parser_test2_3()
     OP_RESULT rst;
     uint8_t fData[8];
     rst = message_parser_frame_get(&parser, &schema, &frame);
-    MU_ASSERT("test2_3:1 X", rst == OP_RESULT_OK);
+    MU_ASSERT(rst == OP_RESULT_OK);
     if (rst == OP_RESULT_OK)
     {
         MU_VEC_CLEAR(fData, 8);
         message_parser_frame_content_extract(&frame, fData);
-        MU_ASSERT_VEC_EQUALS("test2_3:1r X", fData, refData, 8);
+        MU_ASSERT_VEC_EQUALS(fData, refData, 8);
     }
 
     rst = message_parser_frame_get(&parser, &schema, &frame);
-    MU_ASSERT("test2_3:2 X", rst == OP_RESULT_OK);
+    MU_ASSERT(rst == OP_RESULT_OK);
     if (rst == OP_RESULT_OK)
     {
         MU_VEC_CLEAR(fData, 8);
         message_parser_frame_content_extract(&frame, fData);
-        MU_ASSERT_VEC_EQUALS("test2_3:2r X", fData, refData, 8);
+        MU_ASSERT_VEC_EQUALS(fData, refData, 8);
     }
 
     rst = message_parser_frame_get(&parser, &schema, &frame);
-    MU_ASSERT("test2_3:3 X", rst == OP_RESULT_OK);
+    MU_ASSERT(rst == OP_RESULT_OK);
     if (rst == OP_RESULT_OK)
     {
         MU_VEC_CLEAR(fData, 8);
         message_parser_frame_content_extract(&frame, fData);
-        MU_ASSERT_VEC_EQUALS("test2_3:3r X", fData, refData, 8);
+        MU_ASSERT_VEC_EQUALS(fData, refData, 8);
     }
 
     ringbuffer_write(&rb, wr0Data, 50, true, &aw);
 
     rst = message_parser_frame_get(&parser, &schema, &frame);
-    MU_ASSERT("test2_3:4 X", rst == OP_RESULT_OK);
+    MU_ASSERT(rst == OP_RESULT_OK);
     if (rst == OP_RESULT_OK)
     {
         MU_VEC_CLEAR(fData, 8);
         message_parser_frame_content_extract(&frame, fData);
-        MU_ASSERT_VEC_EQUALS("test2_3:4r X", fData, refData, 8);
+        MU_ASSERT_VEC_EQUALS(fData, refData, 8);
     }
 
     rst = message_parser_frame_get(&parser, &schema, &frame);
-    MU_ASSERT("test2_3:5 X", rst == OP_RESULT_OK);
+    MU_ASSERT(rst == OP_RESULT_OK);
     if (rst == OP_RESULT_OK)
     {
         MU_VEC_CLEAR(fData, 8);
         message_parser_frame_content_extract(&frame, fData);
-        MU_ASSERT_VEC_EQUALS("test2_3:5r X", fData, refData, 8);
+        MU_ASSERT_VEC_EQUALS(fData, refData, 8);
     }
 }
 
@@ -428,16 +428,16 @@ static void message_parser_test3_1()
     OP_RESULT rst;
     uint8_t fData[8];
     rst = message_parser_frame_get(&parser, &schema, &frame);
-    MU_ASSERT("test3_1:1 X", rst == OP_RESULT_OK);
+    MU_ASSERT(rst == OP_RESULT_OK);
     if (rst == OP_RESULT_OK)
     {
         MU_VEC_CLEAR(fData, 8);
         message_parser_frame_content_extract(&frame, fData);
-        MU_ASSERT_VEC_EQUALS("test3_1:1r X", fData, refData, 8);
+        MU_ASSERT_VEC_EQUALS(fData, refData, 8);
     }
 
     rst = message_parser_frame_get(&parser, &schema, &frame);
-    MU_ASSERT("test3_1:2 X", rst == OP_RESULT_OK);
+    MU_ASSERT(rst == OP_RESULT_OK);
     if (rst == OP_RESULT_OK)
     {
         uint8_t fData_2[21];
@@ -445,24 +445,24 @@ static void message_parser_test3_1()
                                              0x00, 0xEF, 0xFF, 0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x03, 0x04};
         MU_VEC_CLEAR(fData_2, 21);
         message_parser_frame_content_extract(&frame, fData_2);
-        MU_ASSERT_VEC_EQUALS("test3_1:2r X", fData_2, refData2, 21);
+        MU_ASSERT_VEC_EQUALS(fData_2, refData2, 21);
     }
 
     rst = message_parser_frame_get(&parser, &schema, &frame);
-    MU_ASSERT("test3_1:3 X", rst != OP_RESULT_OK);
+    MU_ASSERT(rst != OP_RESULT_OK);
     if (rst == OP_RESULT_OK)
     {
         MU_VEC_CLEAR(fData, 8);
         message_parser_frame_content_extract(&frame, fData);
-        MU_ASSERT_VEC_EQUALS("test3_1:3r X", fData, refData, 8);
+        MU_ASSERT_VEC_EQUALS(fData, refData, 8);
     }
 }
 
 void message_parser_test()
 {
     int h = strtol("  ffx", NULL, 16);
-    MU_ASSERT("float!=4", sizeof(float) == 4);
-    MU_ASSERT("double!=8", sizeof(double) == 8);
+    MU_ASSERT(sizeof(float) == 4);
+    MU_ASSERT(sizeof(double) == 8);
     message_parser_test1_1();
     message_parser_test1_2();
     message_parser_test2_1();

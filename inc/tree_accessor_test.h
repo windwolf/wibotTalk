@@ -1,15 +1,15 @@
-#ifndef ___CONSOLE_TEST_H__
-#define ___CONSOLE_TEST_H__ 
+#ifndef ___TREE_ACCESSOR_TEST_H__
+#define ___TREE_ACCESSOR_TEST_H__
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
-void console_test();
-
+    void tree_accessor_test();
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif	// ___CONSOLE_TEST_H__
+#endif // ___TREE_ACCESSOR_TEST_H__
