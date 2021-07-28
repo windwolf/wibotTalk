@@ -60,7 +60,7 @@ bool console_item_register(Console *console, const char *containerPath, ConsoleI
         LOG_E("%s already exist", entry->name);
         return false;
     }
-    tree_child_append((Tree *)container, entry);
+    tree_child_append((Tree *)container, (Tree *)entry);
     return true;
 };
 
@@ -102,9 +102,9 @@ char *console_context_path_get(Console *console)
     {
         return ctx->path;
     }
-    strlcpy(ctx->path, CONSOLE_PATH_MAX_SIZE, "/");
+    strlcpy(ctx->path, "/", CONSOLE_PATH_MAX_SIZE);
     bool first = true;
-    for (size_t i = 1; i < ctx->currentContextNodeIndex; i++)
+    for (size_t i = 1; i <= ctx->currentContextNodeIndex; i++)
     {
         if (first)
         {
@@ -119,15 +119,36 @@ char *console_context_path_get(Console *console)
         {
             char it[16];
             itoa(ctx->contextNodes[i].index, it, 10);
+			strlcat(ctx->path, "[", CONSOLE_PATH_MAX_SIZE);
             strlcat(ctx->path, it, CONSOLE_PATH_MAX_SIZE);
+			strlcat(ctx->path, "]", CONSOLE_PATH_MAX_SIZE);
         }
     }
     return ctx->path;
 }
 
-bool console_item_list(Console *console)
+char **console_item_list(Console *console, const char *path)
 {
-    return 1;
+    if (!_console_path_parse(console, path))
+    {
+        return NULL;
+    }
+    ConsolePathNode *node = &console->context._parsedNodes[console->context._currentParsedNodeIndex];
+    ConsoleItemEntry *child = (ConsoleItemEntry *)node->currentEntry->base.child;
+    for (size_t i = 0; i < CONSOLE_CHILDREN_MAX_SIZE; i++)
+    {
+        if (child != NULL)
+        {
+            console->_listBuf[i] = child->name;
+            child = child->base.next;
+        }
+        else
+        {
+            console->_listBuf[i] = NULL;
+            break;
+        }
+    }
+    return console->_listBuf;
 };
 
 static void _console_evaluate(Console *console, void *in, void **out, ConsoleAction action)
@@ -484,7 +505,7 @@ static void _console_init(Console *console)
     console->context._parsedNodeBackTrace = 0;
 
     console->context.path[0] = '/';
-    console->context.path[1] = "\0";
+    console->context.path[1] = 0x00;
 };
 
 static int _console_match_name(const ConsoleItemEntry *entry, const char *name)

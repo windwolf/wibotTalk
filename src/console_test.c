@@ -31,6 +31,10 @@ static void cd_test1();
 static void cd_test2();
 static void cd_test3();
 
+static void li_test1();
+static void li_test2();
+static void li_test3();
+
 typedef struct
 {
     int f1;
@@ -72,15 +76,15 @@ void console_test()
     cd_test1();
     set_test1();
     get_test1();
+    li_test1();
 
     cd_test2();
     set_test2();
     get_test2();
 
     cd_test3();
-	set_test3();
+    set_test3();
     get_test3();
-    
 };
 
 static void register_test1()
@@ -127,48 +131,49 @@ static void cd_test1()
 {
     bool rst;
     assert(cons.context.currentContextNodeIndex == 0);
-    assert(strcmp(console_context_path_get(&cons), "/"));
+    assert(!strcmp(console_context_path_get(&cons), "/"));
 
     rst = console_context_change(&cons, "/aa");
     assert(rst);
     assert(cons.context.currentContextNodeIndex == 1);
-    assert(strcmp(console_context_path_get(&cons), "/aa"));
+    assert(!strcmp(console_context_path_get(&cons), "/aa"));
 
     rst = console_context_change(&cons, "..");
     assert(rst);
     assert(cons.context.currentContextNodeIndex == 0);
-    assert(strcmp(console_context_path_get(&cons), "/"));
+    assert(!strcmp(console_context_path_get(&cons), "/"));
 
     rst = console_context_change(&cons, "/aa/a1");
     assert(rst);
     assert(cons.context.currentContextNodeIndex == 2);
-    assert(strcmp(console_context_path_get(&cons), "/aa/a1"));
+    assert(!strcmp(console_context_path_get(&cons), "/aa/a1"));
 
     rst = console_context_change(&cons, ".");
     assert(rst);
     assert(cons.context.currentContextNodeIndex == 2);
-    assert(strcmp(console_context_path_get(&cons), "/aa/a1"));
+    assert(!strcmp(console_context_path_get(&cons), "/aa/a1"));
 
     rst = console_context_change(&cons, "f1");
     assert(rst);
     assert(cons.context.currentContextNodeIndex == 3);
-    assert(strcmp(console_context_path_get(&cons), "/aa/a1/f1"));
+    assert(!strcmp(console_context_path_get(&cons), "/aa/a1/f1"));
 
     rst = console_context_change(&cons, "../../a2");
     assert(rst);
     assert(cons.context.currentContextNodeIndex == 2);
-    assert(strcmp(console_context_path_get(&cons), "/aa/a2"));
+    assert(!strcmp(console_context_path_get(&cons), "/aa/a2"));
 
     rst = console_context_change(&cons, "../a1/f2");
     assert(rst);
     assert(cons.context.currentContextNodeIndex == 3);
-    assert(strcmp(console_context_path_get(&cons), "/aa/a1/f2"));
+    assert(!strcmp(console_context_path_get(&cons), "/aa/a1/f2"));
 
     rst = console_context_change(&cons, "/");
     assert(rst);
     assert(cons.context.currentContextNodeIndex == 0);
-    assert(strcmp(console_context_path_get(&cons), "/"));
+    assert(!strcmp(console_context_path_get(&cons), "/"));
 };
+
 static void set_test1()
 {
     bool rst;
@@ -216,13 +221,56 @@ static void get_test1()
     assert(!rst);
 };
 
+static void li_test1()
+{
+    bool rst;
+    char **li;
+    rst = console_context_change(&cons, "/");
+    li = console_item_list(&cons, ".");
+    assert(li != NULL);
+    assert(!strcmp(li[0], "aa"));
+    assert(!strcmp(li[1], "bbs"));
+    assert(li[2] == NULL);
+
+    li = console_item_list(&cons, "aa");
+    assert(li != NULL);
+    assert(!strcmp(li[0], "a1"));
+    assert(!strcmp(li[1], "a2"));
+    assert(li[2] == NULL);
+
+    li = console_item_list(&cons, "aa/a1");
+    assert(li != NULL);
+    assert(!strcmp(li[0], "f1"));
+    assert(!strcmp(li[1], "f2"));
+    assert(li[2] == NULL);
+
+    rst = console_context_change(&cons, "/aa");
+    li = console_item_list(&cons, ".");
+    assert(li != NULL);
+    assert(!strcmp(li[0], "a1"));
+    assert(!strcmp(li[1], "a2"));
+    assert(li[2] == NULL);
+
+    li = console_item_list(&cons, "/");
+    assert(li != NULL);
+    assert(!strcmp(li[0], "aa"));
+    assert(!strcmp(li[1], "bbs"));
+    assert(li[2] == NULL);
+
+    li = console_item_list(&cons, "a1");
+    assert(li != NULL);
+    assert(!strcmp(li[0], "f1"));
+    assert(!strcmp(li[1], "f2"));
+    assert(li[2] == NULL);
+};
+
 static void cd_test2()
 {
     bool rst;
     rst = console_context_change(&cons, "/");
     assert(rst);
     assert(cons.context.currentContextNodeIndex == 0);
-    assert(strcmp(console_context_path_get(&cons), "/"));
+    assert(!strcmp(console_context_path_get(&cons), "/"));
 };
 static void set_test2()
 {
@@ -257,7 +305,7 @@ static void cd_test3()
     rst = console_context_change(&cons, "/bbs[0]");
     assert(rst);
     assert(cons.context.currentContextNodeIndex == 1);
-    assert(strcmp(console_context_path_get(&cons), "/bbs[0]"));
+    assert(!strcmp(console_context_path_get(&cons), "/bbs[0]"));
 };
 static void set_test3()
 {

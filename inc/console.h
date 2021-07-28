@@ -1,3 +1,15 @@
+/**
+ * @file console.h
+ * @author zhoujian (zhoujian.ww@gmail.com)
+ * @brief Organize the tree struct, manage the context, and perform the node action.
+ *  this module can be used in serial console or gui/console menu management.
+ * @version 0.1
+ * @date 2021-07-27
+ * 
+ * @copyright Copyright (c) 2021
+ * 
+ */
+
 #ifndef ___CONSOLE_H__
 #define ___CONSOLE_H__
 
@@ -12,6 +24,7 @@ extern "C"
 #include "stdbool.h"
 
 #define CONSOLE_NODE_MAX_DEPTH 16
+#define CONSOLE_CHILDREN_MAX_SIZE 16
 #define CONSOLE_PATH_MAX_SIZE 256
 
     typedef enum
@@ -75,7 +88,7 @@ extern "C"
     {
         ConsoleItemEntry *root;
         ConsoleContext context;
-
+        char *_listBuf[CONSOLE_CHILDREN_MAX_SIZE];
     } Console;
 
     typedef struct ConsoleCommand
@@ -95,7 +108,7 @@ extern "C"
 
     bool console_value_get(Console *console, const char *path, void **value);
 
-    bool console_item_list(Console *console);
+    char **console_item_list(Console *console, const char *path);
 
 #ifdef __cplusplus
 }
