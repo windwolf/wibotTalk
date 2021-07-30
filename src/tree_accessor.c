@@ -30,7 +30,7 @@ static inline token_type _tree_accessor_next_token(const char *path, char const 
 static inline bool _tree_accessor_ctx_update(TreeAccessorContext *ctx, char *identity, int identitySize, int index);
 static void _tree_accessor_init(TreeAccessor *console);
 
-static void _tree_accessor_evaluate(TreeAccessor *console, void *in, void **out, ConsoleAction action);
+static bool _tree_accessor_evaluate(TreeAccessor *console, char *in, char *outBuffer, ConsoleAction action);
 static bool _tree_accessor_path_parse(TreeAccessor *console, const char *path);
 static TreeAccessorItemEntry *_tree_accessor_entry_child_find(TreeAccessorItemEntry *entry, const char *identity, int size);
 static int _tree_accessor_match_name(const TreeAccessorItemEntry *entry, const char *name);
@@ -70,29 +70,32 @@ bool tree_accessor_context_change(TreeAccessor *console, const char *path)
     {
         return false;
     }
-    _tree_accessor_evaluate(console, NULL, NULL, action_context_sync);
+    bool rst;
+    rst = _tree_accessor_evaluate(console, NULL, NULL, action_context_sync);
+    if (rst == false)
+    {
+        return rst;
+    }
     console->context.path[0] = '\0';
     return true;
 }
 
-bool tree_accessor_value_set(TreeAccessor *console, const char *path, void *value)
+bool tree_accessor_value_set(TreeAccessor *console, const char *path, char *value)
 {
     if (!_tree_accessor_path_parse(console, path))
     {
         return false;
     }
-    _tree_accessor_evaluate(console, value, NULL, action_set);
-    return true;
+    return _tree_accessor_evaluate(console, value, NULL, action_set);
 };
 
-bool tree_accessor_value_get(TreeAccessor *console, const char *path, void **value)
+bool tree_accessor_value_get(TreeAccessor *console, const char *path, char *outBuffer)
 {
     if (!_tree_accessor_path_parse(console, path))
     {
         return false;
     }
-    _tree_accessor_evaluate(console, NULL, value, action_get);
-    return true;
+    return _tree_accessor_evaluate(console, NULL, outBuffer, action_get);
 };
 
 char *tree_accessor_context_path_get(TreeAccessor *console)
@@ -151,7 +154,7 @@ char **tree_accessor_item_list(TreeAccessor *console, const char *path)
     return console->_listBuf;
 };
 
-static void _tree_accessor_evaluate(TreeAccessor *console, void *in, void **out, ConsoleAction action)
+static bool _tree_accessor_evaluate(TreeAccessor *console, char *in, char *outBuffer, ConsoleAction action)
 {
     TreeAccessorContext *ctx = &console->context;
     int32_t cIdx = ctx->_currentParsedNodeIndex;
@@ -166,46 +169,75 @@ static void _tree_accessor_evaluate(TreeAccessor *console, void *in, void **out,
 
             cNode->currentEntry = pNode->currentEntry;
             cNode->index = pNode->index;
-            cNodeParent->currentEntry->accessor(cNodeParent->parentData, cNodeParent->index, NULL, &cNode->parentData, false);
+            if (cNodeParent->currentEntry->rawGetter == NULL)
+            {
+                cNode->parentData = NULL;
+            }
+            else
+            {
+                cNodeParent->currentEntry->rawGetter(cNodeParent->parentData, cNodeParent->index, &cNode->parentData);
+            }
         }
         ctx->currentContextNodeIndex = ctx->_currentParsedNodeIndex;
+        return true;
     }
     else
     {
         void *parentData;
         TreeAccessorPathContextNode *parentNode = &ctx->contextNodes[ctx->_parsedNodeBackTrace];
-        parentNode->currentEntry->accessor(parentNode->parentData, parentNode->index, NULL, &parentData, false);
+        if (parentNode->currentEntry->rawGetter == NULL)
+        {
+            parentData = NULL;
+        }
+        else
+        {
+            parentNode->currentEntry->rawGetter(parentNode->parentData, parentNode->index, &parentData);
+        }
 
         for (int32_t i = ctx->_parsedNodeBackTrace + 1; i <= cIdx - 1; i++)
         {
             void *pData;
             pNode = &ctx->_parsedNodes[i];
-            pNode->currentEntry->accessor(parentData, pNode->index, NULL, &pData, false);
+            if (pNode->currentEntry->rawGetter == NULL)
+            {
+                pData = NULL;
+            }
+            else
+            {
+                pNode->currentEntry->rawGetter(parentData, pNode->index, &pData);
+            }
             parentData = pData;
         }
         if (action == action_get)
         {
-            void *pData;
             pNode = &ctx->_parsedNodes[cIdx];
-            pNode->currentEntry->accessor(parentData, pNode->index, NULL, &pData, false);
-            *out = pData;
+            if (pNode->currentEntry->getter == NULL)
+            {
+                return false;
+            }
+            pNode->currentEntry->getter(parentData, pNode->index, outBuffer);
         }
         else
         {
             pNode = &ctx->_parsedNodes[cIdx];
-            pNode->currentEntry->accessor(parentData, pNode->index, in, NULL, true);
+            if (pNode->currentEntry->setter == NULL)
+            {
+                return false;
+            }
+            pNode->currentEntry->setter(parentData, pNode->index, in);
         }
+        return true;
     }
 }
 
-/*            â”Œ--------------------------------------------------â”
-              |      â”Œ------------ .. ----------------------â”    |
-              |      |------------ . -----------------------â”    |
-   â”Œ----------â”¼-----â”|           â”Œ--------------------------â”    |
-   |          |     â†“|           |                          â†“    â†“
+/*            â”-------------------------------------------------â”
+              |      â”----------- .. ----------------------â”   |
+              |      |------------ . -----------------------â”   |
+   â”---------â”----â”|           â”-------------------------â”   |
+   |          |     â†“|           |                          â†   â†
 --(00)-> / --(10)-( 20 )-> id --(30)-> [ --> index --> ] --(40)-(50)-> end
-                    â†‘                                       |
-                    â””--------------- / ---------------------â”˜
+                    â†                                      |
+                    â”-------------- / ---------------------â”
 */
 static bool _tree_accessor_path_parse(TreeAccessor *console, const char *path)
 {

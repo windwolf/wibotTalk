@@ -26,14 +26,17 @@ extern "C"
 #define CONSOLE_NODE_MAX_DEPTH 16
 #define CONSOLE_CHILDREN_MAX_SIZE 16
 #define CONSOLE_PATH_MAX_SIZE 256
-
-    typedef bool (*TreeValueAccessor)(const void *context, const int32_t index, void *in, void **out, bool isSet);
+    typedef bool (*TreeValueRawGetter)(const void *context, const int32_t index, void **out);
+    typedef bool (*TreeValueGetter)(const void *context, const int32_t index, char *out);
+    typedef bool (*TreeValueSetter)(const void *context, const int32_t index, char *in);
 
     typedef struct TreeAccessorItemEntry
     {
         Tree base;
         const char *name;
-        TreeValueAccessor accessor;
+        TreeValueRawGetter rawGetter; // if NULL, return NULL.
+        TreeValueGetter getter;       // if NULL, error when evaluate.
+        TreeValueSetter setter;       // if NULL, error when evaluate.
     } TreeAccessorItemEntry;
 
     typedef struct TreeAccessorPathNode
@@ -79,9 +82,9 @@ extern "C"
 
     char *tree_accessor_context_path_get(TreeAccessor *console);
 
-    bool tree_accessor_value_set(TreeAccessor *console, const char *path, void *value);
+    bool tree_accessor_value_set(TreeAccessor *console, const char *path, char *value);
 
-    bool tree_accessor_value_get(TreeAccessor *console, const char *path, void **value);
+    bool tree_accessor_value_get(TreeAccessor *console, const char *path, char *outBuffer);
 
     char **tree_accessor_item_list(TreeAccessor *console, const char *path);
 
