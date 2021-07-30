@@ -67,7 +67,7 @@ OP_RESULT message_parser_frame_get(MessageParser *parser, MessageSchema *customS
     uint8_t stage = parser->_stage;
     uint8_t frameCount = 0;
     MessageSchema *schema = parser->_curSchema;
-
+    bool contentNotEnd = false;
     if (customSchema != NULL)
     {
         // 提供了自定义schema. 如果提供的和当前的一致, 则沿用; 否则初始化.
@@ -113,6 +113,7 @@ OP_RESULT message_parser_frame_get(MessageParser *parser, MessageSchema *customS
         else
         {
             stage = MESSAGE_PARSE_STAGE_SEEKING_PREFIX;
+            contentNotEnd = true;
             break;
         }
     case MESSAGE_PARSE_STAGE_PARSING_CMD:
@@ -126,6 +127,7 @@ OP_RESULT message_parser_frame_get(MessageParser *parser, MessageSchema *customS
             else
             {
                 stage = MESSAGE_PARSE_STAGE_PARSING_CMD;
+                contentNotEnd = true;
                 break;
             }
         }
@@ -147,6 +149,7 @@ OP_RESULT message_parser_frame_get(MessageParser *parser, MessageSchema *customS
             else
             {
                 stage = MESSAGE_SCHEMA_MODE_DYNAMIC_LENGTH;
+                contentNotEnd = true;
                 break;
             }
         }
@@ -164,6 +167,7 @@ OP_RESULT message_parser_frame_get(MessageParser *parser, MessageSchema *customS
             else
             {
                 stage = MESSAGE_PARSE_STAGE_PARSING_ALTERDATA;
+                contentNotEnd = true;
                 break;
             }
         }
@@ -179,6 +183,7 @@ OP_RESULT message_parser_frame_get(MessageParser *parser, MessageSchema *customS
             else
             {
                 stage = MESSAGE_PARSE_STAGE_SEEKING_CONTENT;
+                contentNotEnd = true;
                 break;
             }
         }
@@ -193,6 +198,7 @@ OP_RESULT message_parser_frame_get(MessageParser *parser, MessageSchema *customS
             else
             {
                 stage = MESSAGE_PARSE_STAGE_SEEKING_CRC;
+                contentNotEnd = true;
                 break;
             }
         }
@@ -214,6 +220,7 @@ OP_RESULT message_parser_frame_get(MessageParser *parser, MessageSchema *customS
                 {
                     result = 0;
                     stage = MESSAGE_PARSE_STAGE_MATCHING_SUFFIX;
+                    contentNotEnd = true;
                     break;
                 }
                 else // mismatch
@@ -239,6 +246,7 @@ OP_RESULT message_parser_frame_get(MessageParser *parser, MessageSchema *customS
             else
             {
                 stage = MESSAGE_PARSE_STAGE_SEEKING_SUFFIX;
+                contentNotEnd = true;
                 break;
             }
         }
@@ -258,7 +266,14 @@ OP_RESULT message_parser_frame_get(MessageParser *parser, MessageSchema *customS
     }
     else
     {
-        return OP_RESULT_GENERAL_ERROR;
+        if (contentNotEnd)
+        {
+            return OP_RESULT_CONTENT_NOT_ENOUGH;
+        }
+        else
+        {
+            return OP_RESULT_GENERAL_ERROR;
+        }
     }
 };
 
