@@ -8,7 +8,6 @@ static bool test_cfg_raw_getter(const void *context, const int32_t index, void *
 static bool test_cfg_value_getter(const void *context, const int32_t index, char *out);
 static bool test_cfg_value_setter(const void *context, const int32_t index, char *in);
 static TreeAccessor ta;
-static TreeAccessorItemEntry root = {.name = "/"};
 static TreeAccessorItemEntry aa = {.name = "aa"};
 static TreeAccessorItemEntry bbs = {.name = "bbs", .rawGetter = test_cfg_raw_getter};
 static TreeAccessorItemEntry bf1 = {
@@ -59,12 +58,13 @@ static bool test_cfg_value_getter(const void *context, const int32_t index, char
 
 static bool test_cfg_value_setter(const void *context, const int32_t index, char *in)
 {
-	int value;
-	int rst;
-	rst = sscanf(in, "%d", &value);
-	if (rst != 1) {
-		return false;
-	}
+    int value;
+    int rst;
+    rst = sscanf(in, "%d", &value);
+    if (rst != 1)
+    {
+        return false;
+    }
     ((test_data *)context)->f1 = value;
     return true;
 }
@@ -90,8 +90,6 @@ void tree_accessor_test()
 static void register_test1()
 {
     bool rst;
-    rst = tree_accessor_item_register(&ta, "", &root);
-    MU_ASSERT(rst);
     rst = tree_accessor_item_register(&ta, "/", &aa);
     MU_ASSERT(rst);
     rst = tree_accessor_item_register(&ta, "/", &bbs);
@@ -109,69 +107,68 @@ static void register_test1()
     rst = tree_accessor_item_register(&ta, "/aa/a1", &aa_a1_f2);
     MU_ASSERT(rst);
 
-    TreeAccessorItemEntry *_root = ta.root;
-    MU_ASSERT(strcmp(_root->name, "/")==0);
+    TreeAccessorItemEntry *_root = &ta.root;
     TreeAccessorItemEntry *_aa = (TreeAccessorItemEntry *)_root->base.child;
-    MU_ASSERT(strcmp(_aa->name, "aa")==0);
+    MU_ASSERT(strcmp(_aa->name, "aa") == 0);
     TreeAccessorItemEntry *_bbs = (TreeAccessorItemEntry *)_aa->base.next;
-    MU_ASSERT(strcmp(_bbs->name, "bbs")==0);
+    MU_ASSERT(strcmp(_bbs->name, "bbs") == 0);
     TreeAccessorItemEntry *_bf1 = (TreeAccessorItemEntry *)_bbs->base.child;
-    MU_ASSERT(strcmp(_bf1->name, "bf1")==0);
+    MU_ASSERT(strcmp(_bf1->name, "bf1") == 0);
     TreeAccessorItemEntry *_aa_a1 = (TreeAccessorItemEntry *)_aa->base.child;
-    MU_ASSERT(strcmp(_aa_a1->name, "a1")==0);
+    MU_ASSERT(strcmp(_aa_a1->name, "a1") == 0);
     TreeAccessorItemEntry *_aa_a2 = (TreeAccessorItemEntry *)_aa_a1->base.next;
-    MU_ASSERT(strcmp(_aa_a2->name, "a2")==0);
+    MU_ASSERT(strcmp(_aa_a2->name, "a2") == 0);
     TreeAccessorItemEntry *_aa_a1_f1 = (TreeAccessorItemEntry *)_aa_a1->base.child;
-    MU_ASSERT(strcmp(_aa_a1_f1->name, "f1")==0);
+    MU_ASSERT(strcmp(_aa_a1_f1->name, "f1") == 0);
     TreeAccessorItemEntry *_aa_a1_f2 = (TreeAccessorItemEntry *)_aa_a1_f1->base.next;
-    MU_ASSERT(strcmp(_aa_a1_f2->name, "f2")==0);
+    MU_ASSERT(strcmp(_aa_a1_f2->name, "f2") == 0);
 };
 
 static void cd_test1()
 {
     bool rst;
     MU_ASSERT(ta.context.currentContextNodeIndex == 0);
-    MU_ASSERT(strcmp(tree_accessor_context_path_get(&ta), "/")==0);
+    MU_ASSERT(strcmp(tree_accessor_context_path_get(&ta), "/") == 0);
 
     rst = tree_accessor_context_change(&ta, "/aa");
     MU_ASSERT(rst);
     MU_ASSERT(ta.context.currentContextNodeIndex == 1);
-    MU_ASSERT(strcmp(tree_accessor_context_path_get(&ta), "/aa")==0);
+    MU_ASSERT(strcmp(tree_accessor_context_path_get(&ta), "/aa") == 0);
 
     rst = tree_accessor_context_change(&ta, "..");
     MU_ASSERT(rst);
     MU_ASSERT(ta.context.currentContextNodeIndex == 0);
-    MU_ASSERT(strcmp(tree_accessor_context_path_get(&ta), "/")==0);
+    MU_ASSERT(strcmp(tree_accessor_context_path_get(&ta), "/") == 0);
 
     rst = tree_accessor_context_change(&ta, "/aa/a1");
     MU_ASSERT(rst);
     MU_ASSERT(ta.context.currentContextNodeIndex == 2);
-    MU_ASSERT(strcmp(tree_accessor_context_path_get(&ta), "/aa/a1")==0);
+    MU_ASSERT(strcmp(tree_accessor_context_path_get(&ta), "/aa/a1") == 0);
 
     rst = tree_accessor_context_change(&ta, ".");
     MU_ASSERT(rst);
     MU_ASSERT(ta.context.currentContextNodeIndex == 2);
-    MU_ASSERT(strcmp(tree_accessor_context_path_get(&ta), "/aa/a1")==0);
+    MU_ASSERT(strcmp(tree_accessor_context_path_get(&ta), "/aa/a1") == 0);
 
     rst = tree_accessor_context_change(&ta, "f1");
     MU_ASSERT(rst);
     MU_ASSERT(ta.context.currentContextNodeIndex == 3);
-    MU_ASSERT(strcmp(tree_accessor_context_path_get(&ta), "/aa/a1/f1")==0);
+    MU_ASSERT(strcmp(tree_accessor_context_path_get(&ta), "/aa/a1/f1") == 0);
 
     rst = tree_accessor_context_change(&ta, "../../a2");
     MU_ASSERT(rst);
     MU_ASSERT(ta.context.currentContextNodeIndex == 2);
-    MU_ASSERT(strcmp(tree_accessor_context_path_get(&ta), "/aa/a2")==0);
+    MU_ASSERT(strcmp(tree_accessor_context_path_get(&ta), "/aa/a2") == 0);
 
     rst = tree_accessor_context_change(&ta, "../a1/f2");
     MU_ASSERT(rst);
     MU_ASSERT(ta.context.currentContextNodeIndex == 3);
-    MU_ASSERT(strcmp(tree_accessor_context_path_get(&ta), "/aa/a1/f2")==0);
+    MU_ASSERT(strcmp(tree_accessor_context_path_get(&ta), "/aa/a1/f2") == 0);
 
     rst = tree_accessor_context_change(&ta, "/");
     MU_ASSERT(rst);
     MU_ASSERT(ta.context.currentContextNodeIndex == 0);
-    MU_ASSERT(strcmp(tree_accessor_context_path_get(&ta), "/")==0);
+    MU_ASSERT(strcmp(tree_accessor_context_path_get(&ta), "/") == 0);
 };
 
 static void set_test1()
@@ -228,39 +225,39 @@ static void li_test1()
     rst = tree_accessor_context_change(&ta, "/");
     li = tree_accessor_item_list(&ta, ".");
     MU_ASSERT(li != NULL);
-    MU_ASSERT(strcmp(li[0], "aa")==0);
-    MU_ASSERT(strcmp(li[1], "bbs")==0);
+    MU_ASSERT(strcmp(li[0], "aa") == 0);
+    MU_ASSERT(strcmp(li[1], "bbs") == 0);
     MU_ASSERT(li[2] == NULL);
 
     li = tree_accessor_item_list(&ta, "aa");
     MU_ASSERT(li != NULL);
-    MU_ASSERT(strcmp(li[0], "a1")==0);
-    MU_ASSERT(strcmp(li[1], "a2")==0);
+    MU_ASSERT(strcmp(li[0], "a1") == 0);
+    MU_ASSERT(strcmp(li[1], "a2") == 0);
     MU_ASSERT(li[2] == NULL);
 
     li = tree_accessor_item_list(&ta, "aa/a1");
     MU_ASSERT(li != NULL);
-    MU_ASSERT(strcmp(li[0], "f1")==0);
-    MU_ASSERT(strcmp(li[1], "f2")==0);
+    MU_ASSERT(strcmp(li[0], "f1") == 0);
+    MU_ASSERT(strcmp(li[1], "f2") == 0);
     MU_ASSERT(li[2] == NULL);
 
     rst = tree_accessor_context_change(&ta, "/aa");
     li = tree_accessor_item_list(&ta, ".");
     MU_ASSERT(li != NULL);
-    MU_ASSERT(strcmp(li[0], "a1")==0);
-    MU_ASSERT(strcmp(li[1], "a2")==0);
+    MU_ASSERT(strcmp(li[0], "a1") == 0);
+    MU_ASSERT(strcmp(li[1], "a2") == 0);
     MU_ASSERT(li[2] == NULL);
 
     li = tree_accessor_item_list(&ta, "/");
     MU_ASSERT(li != NULL);
-    MU_ASSERT(strcmp(li[0], "aa")==0);
-    MU_ASSERT(strcmp(li[1], "bbs")==0);
+    MU_ASSERT(strcmp(li[0], "aa") == 0);
+    MU_ASSERT(strcmp(li[1], "bbs") == 0);
     MU_ASSERT(li[2] == NULL);
 
     li = tree_accessor_item_list(&ta, "a1");
     MU_ASSERT(li != NULL);
-    MU_ASSERT(strcmp(li[0], "f1")==0);
-    MU_ASSERT(strcmp(li[1], "f2")==0);
+    MU_ASSERT(strcmp(li[0], "f1") == 0);
+    MU_ASSERT(strcmp(li[1], "f2") == 0);
     MU_ASSERT(li[2] == NULL);
 };
 
@@ -290,11 +287,11 @@ static void get_test2()
     char value[64];
     rst = tree_accessor_value_get(&ta, "/bbs[0]/bf1", value);
     MU_ASSERT(rst);
-    MU_ASSERT(strcmp(value, "1000")==0);
+    MU_ASSERT(strcmp(value, "1000") == 0);
 
     rst = tree_accessor_value_get(&ta, "/bbs[1]/bf1", value);
     MU_ASSERT(rst);
-    MU_ASSERT(strcmp(value, "2000")==0);
+    MU_ASSERT(strcmp(value, "2000") == 0);
 };
 
 static void cd_test3()
@@ -320,5 +317,5 @@ static void get_test3()
     char value[64];
     rst = tree_accessor_value_get(&ta, "bf1", value);
     MU_ASSERT(rst);
-    MU_ASSERT(strcmp(value, "3000")==0);
+    MU_ASSERT(strcmp(value, "3000") == 0);
 };

@@ -1,8 +1,8 @@
 /**
- * @file console.h
+ * @file tree.h
  * @author zhoujian (zhoujian.ww@gmail.com)
  * @brief Organize the tree struct, manage the context, and perform the node action.
- *  this module can be used in serial console or gui/console menu management.
+ *  this module can be used in serial tree or gui/tree menu management.
  * @version 0.1
  * @date 2021-07-27
  * 
@@ -71,22 +71,24 @@ extern "C"
 
     typedef struct TreeAccessor
     {
-        TreeAccessorItemEntry *root;
+        TreeAccessorItemEntry root;
         TreeAccessorContext context;
         char *_listBuf[CONSOLE_CHILDREN_MAX_SIZE];
     } TreeAccessor;
 
-    bool tree_accessor_item_register(TreeAccessor *console, const char *containerPath, TreeAccessorItemEntry *entry);
+    void tree_accessor_create(TreeAccessor *tree, TreeValueRawGetter rawGetter, TreeValueGetter getter, TreeValueSetter setter);
 
-    bool tree_accessor_context_change(TreeAccessor *console, const char *path);
+    bool tree_accessor_item_register(TreeAccessor *tree, const char *containerPath, TreeAccessorItemEntry *entry);
 
-    char *tree_accessor_context_path_get(TreeAccessor *console);
+    bool tree_accessor_context_change(TreeAccessor *tree, const char *path);
 
-    bool tree_accessor_value_set(TreeAccessor *console, const char *path, char *value);
+    char *tree_accessor_context_path_get(TreeAccessor *tree);
 
-    bool tree_accessor_value_get(TreeAccessor *console, const char *path, char *outBuffer);
+    bool tree_accessor_value_set(TreeAccessor *tree, const char *path, char *value);
 
-    char **tree_accessor_item_list(TreeAccessor *console, const char *path);
+    bool tree_accessor_value_get(TreeAccessor *tree, const char *path, char *outBuffer);
+
+    char **tree_accessor_item_list(TreeAccessor *tree, const char *path);
 
 #ifdef __cplusplus
 }
