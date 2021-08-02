@@ -38,16 +38,7 @@ static void message_parser_test1_1()
     MessageFrame frame;
     OP_RESULT rst;
 
-    // test1_1:1
-    rst = message_parser_frame_get(&parser, NULL, &frame);
-    MU_ASSERT(rst != OP_RESULT_OK);
     uint8_t fData[8];
-    if (rst == OP_RESULT_OK)
-    {
-        MU_VEC_CLEAR(fData, 8);
-        message_parser_frame_content_extract(&frame, fData);
-        MU_ASSERT_VEC_EQUALS(fData, refData, 8);
-    }
 
     // test1_1:2
     rst = message_parser_frame_get(&parser, NULL, &frame);
@@ -234,15 +225,6 @@ static void message_parser_test2_1()
     uint8_t fData[8];
     rst = message_parser_frame_get(&parser, &schema, &frame);
     MU_ASSERT(rst == OP_RESULT_OK);
-    if (rst == OP_RESULT_OK)
-    {
-        MU_VEC_CLEAR(fData, 8);
-        message_parser_frame_content_extract(&frame, fData);
-        MU_ASSERT_VEC_EQUALS(fData, refData, 8);
-    }
-
-    rst = message_parser_frame_get(&parser, &schema, &frame);
-    MU_ASSERT(rst != OP_RESULT_OK);
     if (rst == OP_RESULT_OK)
     {
         MU_VEC_CLEAR(fData, 8);

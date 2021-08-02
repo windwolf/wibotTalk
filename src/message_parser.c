@@ -75,7 +75,7 @@ OP_RESULT message_parser_frame_get(MessageParser *parser, MessageSchema *customS
     uint8_t stage = parser->_stage;
     uint8_t frameCount = 0;
     MessageSchema *schema = parser->_curSchema;
-    bool contentNotEnd = false;
+    bool needNewEpic = false;
     if (customSchema != NULL)
     {
         // 提供了自定义schema. 如果提供的和当前的一致, 则沿用; 否则初始化.
@@ -102,195 +102,193 @@ OP_RESULT message_parser_frame_get(MessageParser *parser, MessageSchema *customS
     }
     MESSAGE_SCHEMA_MODE mode = schema->mode;
     bool result = false;
-    switch (stage)
+    do
     {
-    case MESSAGE_PARSE_STAGE_INIT:
-        _message_parser_context_init(parser, schema);
-        // break; // Go to next stage directly.
-    case MESSAGE_PARSE_STAGE_PREPARING:
-        _message_parser_context_preparing(parser);
-        // break; // Go to next stage directly.
-    case MESSAGE_PARSE_STAGE_SEEKING_PREFIX:
-        if (schema->prefixSize > 0)
+        switch (stage)
         {
-            result = _message_parser_chars_seek(parser, schema->prefix, parser->_prefixPatternNexts, schema->prefixSize);
-            if (result)
+        case MESSAGE_PARSE_STAGE_INIT:
+            _message_parser_context_init(parser, schema);
+        case MESSAGE_PARSE_STAGE_PREPARING:
+            _message_parser_context_preparing(parser);
+        case MESSAGE_PARSE_STAGE_SEEKING_PREFIX:
+            if (schema->prefixSize > 0)
             {
-                ringbuffer_read_offset_sync(parser->buffer, parser->_seekOffset - schema->prefixSize);
+                result = _message_parser_chars_seek(parser, schema->prefix, parser->_prefixPatternNexts, schema->prefixSize);
+                if (result)
+                {
+                    ringbuffer_read_offset_sync(parser->buffer, parser->_seekOffset - schema->prefixSize);
+                    parser->_packetStartOffset = 0;
+                    parser->_seekOffset = schema->prefixSize;
+                }
+                else
+                {
+                    stage = MESSAGE_PARSE_STAGE_SEEKING_PREFIX;
+                    needNewEpic = false;
+                    break;
+                }
+            }
+            else
+            {
                 parser->_packetStartOffset = 0;
-                parser->_seekOffset = schema->prefixSize;
             }
-            else
-            {
-                stage = MESSAGE_PARSE_STAGE_SEEKING_PREFIX;
-                contentNotEnd = true;
-                break;
-            }
-        }
-        else
-        {
-            parser->_packetStartOffset = 0;
-        }
 
-    case MESSAGE_PARSE_STAGE_PARSING_CMD:
-        if (schema->cmdLength > 0)
-        {
+        case MESSAGE_PARSE_STAGE_PARSING_CMD:
+            if (schema->cmdLength > 0)
+            {
 
-            result = _message_parser_content_try_scan(parser, schema->cmdLength, parser->_cmd);
-            if (result)
-            {
+                result = _message_parser_content_try_scan(parser, schema->cmdLength, parser->_cmd);
+                if (result)
+                {
+                }
+                else
+                {
+                    stage = MESSAGE_PARSE_STAGE_PARSING_CMD;
+                    needNewEpic = false;
+                    break;
+                }
             }
-            else
+        case MESSAGE_PARSE_STAGE_PARSING_LENGTH:
+            if (mode == MESSAGE_SCHEMA_MODE_FIXED_LENGTH)
             {
-                stage = MESSAGE_PARSE_STAGE_PARSING_CMD;
-                contentNotEnd = true;
-                break;
-            }
-        }
-    case MESSAGE_PARSE_STAGE_PARSING_LENGTH:
-        if (mode == MESSAGE_SCHEMA_MODE_FIXED_LENGTH)
-        {
-            parser->_frameExpectContentLength = schema->fixed.length;
-            parser->_frameActualContentLength = 0;
-        }
-        else if (mode == MESSAGE_SCHEMA_MODE_DYNAMIC_LENGTH)
-        {
-            uint32_t tlen;
-            result = _message_parser_int_try_scan(parser, schema->dynamic.lengthSize, schema->dynamic.endian, &tlen);
-            if (result)
-            {
-                parser->_frameExpectContentLength = tlen - _message_parser_schema_overhead_get(schema);
+                parser->_frameExpectContentLength = schema->fixed.length;
                 parser->_frameActualContentLength = 0;
             }
-            else
+            else if (mode == MESSAGE_SCHEMA_MODE_DYNAMIC_LENGTH)
             {
-                stage = MESSAGE_SCHEMA_MODE_DYNAMIC_LENGTH;
-                contentNotEnd = true;
-                break;
-            }
-        }
-        else
-        {
-            // mode == MESSAGE_SCHEMA_MODE_FREE_LENGTH || mode == MESSAGE_SCHEMA_MODE_STREAM
-            parser->_frameExpectContentLength = -1;
-        }
-    case MESSAGE_PARSE_STAGE_PARSING_ALTERDATA:
-        if (schema->alterDataSize > 0)
-        {
-            result = _message_parser_content_try_scan(parser, schema->alterDataSize, parser->_alterData);
-            if (result)
-            {
-            }
-            else
-            {
-                stage = MESSAGE_PARSE_STAGE_PARSING_ALTERDATA;
-                contentNotEnd = true;
-                break;
-            }
-        }
-    case MESSAGE_PARSE_STAGE_SEEKING_CONTENT:
-        if ((mode != MESSAGE_SCHEMA_MODE_FREE_LENGTH) && (parser->_frameExpectContentLength > 0))
-        {
-            uint32_t parsedLength = 0;
-            result = _message_parser_content_scan(parser, parser->_frameExpectContentLength - parser->_frameActualContentLength, &parsedLength);
-            parser->_frameActualContentLength += parsedLength;
-            if (result)
-            {
-            }
-            else
-            {
-                stage = MESSAGE_PARSE_STAGE_SEEKING_CONTENT;
-                contentNotEnd = true;
-                break;
-            }
-        }
-    case MESSAGE_PARSE_STAGE_SEEKING_CRC:
-        if (schema->crc.length > 0)
-        {
-            uint32_t parsedLength = 0;
-            result = _message_parser_content_try_scan(parser, schema->crc.length, parser->_crc);
-            if (result)
-            {
-            }
-            else
-            {
-                stage = MESSAGE_PARSE_STAGE_SEEKING_CRC;
-                contentNotEnd = true;
-                break;
-            }
-        }
-    case MESSAGE_PARSE_STAGE_MATCHING_SUFFIX:
-        if (mode != MESSAGE_SCHEMA_MODE_FREE_LENGTH)
-        {
-            if (schema->suffixSize == 0)
-            {
-            }
-            else
-            {
-                int8_t msrst = _message_parser_chars_scan(parser, schema->suffix, schema->suffixSize);
-                if (msrst == 1)
+                uint32_t tlen;
+                result = _message_parser_int_try_scan(parser, schema->dynamic.lengthSize, schema->dynamic.endian, &tlen);
+                if (result)
                 {
-                    result = 1;
-                    // success
+                    parser->_frameExpectContentLength = tlen - _message_parser_schema_overhead_get(schema);
+                    parser->_frameActualContentLength = 0;
                 }
-                else if (msrst == 0) // not enough buf
+                else
                 {
-                    result = 0;
-                    stage = MESSAGE_PARSE_STAGE_MATCHING_SUFFIX;
-                    contentNotEnd = true;
-                    break;
-                }
-                else // mismatch
-                {
-                    ringbuffer_read_offset_sync(parser->buffer, parser->_seekOffset);
-                    parser->_packetStartOffset = 0;
-                    parser->_seekOffset = 0;
-                    stage = MESSAGE_PARSE_STAGE_PREPARING;
-                    result = 0;
+                    stage = MESSAGE_SCHEMA_MODE_DYNAMIC_LENGTH;
+                    needNewEpic = false;
                     break;
                 }
             }
-        }
-
-    case MESSAGE_PARSE_STAGE_SEEKING_SUFFIX:
-        if (schema->mode == MESSAGE_SCHEMA_MODE_FREE_LENGTH)
-        {
-            result = _message_parser_chars_seek(parser, schema->suffix, parser->_suffixPatternNexts, schema->suffixSize);
-            if (result)
-            {
-                parser->_frameActualContentLength = parser->_seekOffset - parser->_packetStartOffset - schema->suffixSize - schema->prefixSize;
-            }
             else
             {
-                stage = MESSAGE_PARSE_STAGE_SEEKING_SUFFIX;
-                contentNotEnd = true;
-                break;
+                // mode == MESSAGE_SCHEMA_MODE_FREE_LENGTH || mode == MESSAGE_SCHEMA_MODE_STREAM
+                parser->_frameExpectContentLength = -1;
             }
-        }
-    case MESSAGE_PARSE_STAGE_DONE:
-        _message_parser_frame_pack(parser, parsedFrame);
-        stage = MESSAGE_PARSE_STAGE_PREPARING;
-        result = true;
-        break;
-    default:
-        break;
-    }
+        case MESSAGE_PARSE_STAGE_PARSING_ALTERDATA:
+            if (schema->alterDataSize > 0)
+            {
+                result = _message_parser_content_try_scan(parser, schema->alterDataSize, parser->_alterData);
+                if (result)
+                {
+                }
+                else
+                {
+                    stage = MESSAGE_PARSE_STAGE_PARSING_ALTERDATA;
+                    needNewEpic = false;
+                    break;
+                }
+            }
+        case MESSAGE_PARSE_STAGE_SEEKING_CONTENT:
+            if ((mode != MESSAGE_SCHEMA_MODE_FREE_LENGTH) && (parser->_frameExpectContentLength > 0))
+            {
+                uint32_t parsedLength = 0;
+                result = _message_parser_content_scan(parser, parser->_frameExpectContentLength - parser->_frameActualContentLength, &parsedLength);
+                parser->_frameActualContentLength += parsedLength;
+                if (result)
+                {
+                }
+                else
+                {
+                    stage = MESSAGE_PARSE_STAGE_SEEKING_CONTENT;
+                    needNewEpic = false;
+                    break;
+                }
+            }
+        case MESSAGE_PARSE_STAGE_SEEKING_CRC:
+            if (schema->crc.length > 0)
+            {
+                uint32_t parsedLength = 0;
+                result = _message_parser_content_try_scan(parser, schema->crc.length, parser->_crc);
+                if (result)
+                {
+                }
+                else
+                {
+                    stage = MESSAGE_PARSE_STAGE_SEEKING_CRC;
+                    needNewEpic = false;
+                    break;
+                }
+            }
+        case MESSAGE_PARSE_STAGE_MATCHING_SUFFIX:
+            if (mode != MESSAGE_SCHEMA_MODE_FREE_LENGTH)
+            {
+                if (schema->suffixSize == 0)
+                {
+                }
+                else
+                {
+                    int8_t msrst = _message_parser_chars_scan(parser, schema->suffix, schema->suffixSize);
+                    if (msrst == 1)
+                    {
+                        result = true;
+                        // success
+                    }
+                    else if (msrst == 0) // not enough buf
+                    {
+                        result = false;
+                        stage = MESSAGE_PARSE_STAGE_MATCHING_SUFFIX;
+                        needNewEpic = false;
+                        break;
+                    }
+                    else // mismatch
+                    {
+                        // discard all the data that has been parsed.
+                        ringbuffer_read_offset_sync(parser->buffer, parser->_seekOffset);
+                        parser->_packetStartOffset = 0;
+                        parser->_seekOffset = 0;
+                        stage = MESSAGE_PARSE_STAGE_PREPARING;
+                        needNewEpic = true;
+                        result = false;
+                        break;
+                    }
+                }
+            }
 
+        case MESSAGE_PARSE_STAGE_SEEKING_SUFFIX:
+            if (schema->mode == MESSAGE_SCHEMA_MODE_FREE_LENGTH)
+            {
+                result = _message_parser_chars_seek(parser, schema->suffix, parser->_suffixPatternNexts, schema->suffixSize);
+                if (result)
+                {
+                    parser->_frameActualContentLength = parser->_seekOffset - parser->_packetStartOffset - schema->suffixSize - schema->prefixSize;
+                }
+                else
+                {
+                    stage = MESSAGE_PARSE_STAGE_SEEKING_SUFFIX;
+                    needNewEpic = false;
+                    break;
+                }
+            }
+        case MESSAGE_PARSE_STAGE_DONE:
+            _message_parser_frame_pack(parser, parsedFrame);
+            stage = MESSAGE_PARSE_STAGE_PREPARING;
+            needNewEpic = false;
+            result = true;
+            break;
+        default:
+            break;
+        }
+
+    } while (needNewEpic);
     parser->_stage = stage;
+
     if (result)
     {
         return OP_RESULT_OK;
     }
     else
     {
-        if (contentNotEnd)
-        {
-            return OP_RESULT_CONTENT_NOT_ENOUGH;
-        }
-        else
-        {
-            return OP_RESULT_GENERAL_ERROR;
-        }
+        return OP_RESULT_CONTENT_NOT_ENOUGH;
     }
 };
 
