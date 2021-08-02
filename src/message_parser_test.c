@@ -2,6 +2,7 @@
 #include "../inc/message_parser.h"
 #include "minunit.h"
 #include "stdlib.h"
+#include "string.h"
 static const uint8_t refData[8] = {0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x03, 0x04};
 static void message_parser_test1_1()
 {
@@ -398,7 +399,7 @@ static void message_parser_test2_3()
     }
 }
 
-static void message_parser_test3_1()
+static void free_mode_test_1()
 {
     MessageSchema schema = {
         .mode = MESSAGE_SCHEMA_MODE_FREE_LENGTH,
@@ -458,6 +459,61 @@ static void message_parser_test3_1()
     }
 }
 
+static void free_mode_test_2()
+{
+    MessageSchema schema = {
+        .mode = MESSAGE_SCHEMA_MODE_FREE_LENGTH,
+        //.prefix = {0xEF, 0xFF},
+        .prefixSize = 0,
+        .suffix = {'\r', '\n'},
+        .suffixSize = 2,
+        .crc.length = MESSAGE_SCHEMA_SIZE_NONE,
+    };
+    RingBuffer rb;
+    uint8_t buf[64] = {0};
+    MessageParser parser;
+
+    ringbuffer_create(&rb, buf, 1, 64);
+
+    message_parser_create(&parser, "free_mode_test_2", &schema, &rb);
+
+    char *wr0Data = "hello, message parser.\r\nhello, ";
+
+    uint32_t aw;
+    ringbuffer_write(&rb, wr0Data, strlen(wr0Data), true, &aw);
+
+    MessageFrame frame;
+    OP_RESULT rst;
+    char fData[64];
+
+    rst = message_parser_frame_get(&parser, &schema, &frame);
+    MU_ASSERT(rst == OP_RESULT_OK);
+    if (rst == OP_RESULT_OK)
+    {
+        MU_VEC_CLEAR(fData, 64);
+        message_parser_frame_extract(&frame, fData);
+        MU_ASSERT(memcmp(fData, wr0Data, frame.length) == 0);
+    }
+
+    rst = message_parser_frame_get(&parser, &schema, &frame);
+    MU_ASSERT(rst == OP_RESULT_CONTENT_NOT_ENOUGH);
+
+    char *wr1Data = "free_mode_test_2\r\nhello, i just wanna you sack!\r";
+    ringbuffer_write(&rb, wr1Data, strlen(wr1Data), true, &aw);
+
+    rst = message_parser_frame_get(&parser, &schema, &frame);
+    MU_ASSERT(rst == OP_RESULT_OK);
+    if (rst == OP_RESULT_OK)
+    {
+        MU_VEC_CLEAR(fData, 64);
+        message_parser_frame_content_extract(&frame, fData);
+        MU_ASSERT(memcmp(fData, "hello, free_mode_test_2", frame.contentLength) == 0);
+    }
+
+    rst = message_parser_frame_get(&parser, &schema, &frame);
+    MU_ASSERT(rst != OP_RESULT_OK);
+}
+
 void message_parser_test()
 {
     int h = strtol("  ffx", NULL, 16);
@@ -468,5 +524,6 @@ void message_parser_test()
     message_parser_test2_1();
     message_parser_test2_2();
     message_parser_test2_3();
-    message_parser_test3_1();
+    free_mode_test_1();
+    free_mode_test_2();
 };

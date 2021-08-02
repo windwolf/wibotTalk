@@ -62,6 +62,14 @@ int8_t message_parser_create(MessageParser *parser, char *name,
     return 0;
 };
 
+/**
+ * @brief 
+ * 
+ * @param parser
+ * @param customSchema
+ * @param parsedFrame
+ * @return OP_RESULT 
+*/
 OP_RESULT message_parser_frame_get(MessageParser *parser, MessageSchema *customSchema, MessageFrame *parsedFrame)
 {
     uint8_t stage = parser->_stage;
@@ -103,19 +111,27 @@ OP_RESULT message_parser_frame_get(MessageParser *parser, MessageSchema *customS
         _message_parser_context_preparing(parser);
         // break; // Go to next stage directly.
     case MESSAGE_PARSE_STAGE_SEEKING_PREFIX:
-        result = _message_parser_chars_seek(parser, schema->prefix, parser->_prefixPatternNexts, schema->prefixSize);
-        if (result)
+        if (schema->prefixSize > 0)
         {
-            ringbuffer_read_offset_sync(parser->buffer, parser->_seekOffset - schema->prefixSize);
-            parser->_packetStartOffset = 0;
-            parser->_seekOffset = schema->prefixSize;
+            result = _message_parser_chars_seek(parser, schema->prefix, parser->_prefixPatternNexts, schema->prefixSize);
+            if (result)
+            {
+                ringbuffer_read_offset_sync(parser->buffer, parser->_seekOffset - schema->prefixSize);
+                parser->_packetStartOffset = 0;
+                parser->_seekOffset = schema->prefixSize;
+            }
+            else
+            {
+                stage = MESSAGE_PARSE_STAGE_SEEKING_PREFIX;
+                contentNotEnd = true;
+                break;
+            }
         }
         else
         {
-            stage = MESSAGE_PARSE_STAGE_SEEKING_PREFIX;
-            contentNotEnd = true;
-            break;
+            parser->_packetStartOffset = 0;
         }
+
     case MESSAGE_PARSE_STAGE_PARSING_CMD:
         if (schema->cmdLength > 0)
         {
@@ -155,6 +171,7 @@ OP_RESULT message_parser_frame_get(MessageParser *parser, MessageSchema *customS
         }
         else
         {
+            // mode == MESSAGE_SCHEMA_MODE_FREE_LENGTH || mode == MESSAGE_SCHEMA_MODE_STREAM
             parser->_frameExpectContentLength = -1;
         }
     case MESSAGE_PARSE_STAGE_PARSING_ALTERDATA:
@@ -279,34 +296,43 @@ OP_RESULT message_parser_frame_get(MessageParser *parser, MessageSchema *customS
 
 static int8_t _message_parser_schema_check(MessageSchema *schema)
 {
-    if (schema->prefixSize == 0)
-    {
-        LOG_E("prefix size=0");
-        return -1;
-    }
+
     if (schema->cmdLength > MESSAGE_PARSER_CMD_CRC_BUFFER_SIZE)
     {
-        LOG_E("prefix size=4");
+        LOG_E("cmd length must not great than 4.");
         return -1;
     }
+    if (schema->crc.length > MESSAGE_PARSER_CMD_CRC_BUFFER_SIZE)
+    {
+        LOG_E("crc length must not great than 4.");
+        return -1;
+    }
+
     switch (schema->mode)
     {
     case MESSAGE_SCHEMA_MODE_FIXED_LENGTH:
-
-        if (schema->fixed.length == 0)
+        if (schema->prefixSize == 0)
         {
-            LOG_E("fixed mode: fixed length=0");
+            LOG_E("fixed mode: prefix size must not be 0.");
             return -1;
         }
         break;
     case MESSAGE_SCHEMA_MODE_DYNAMIC_LENGTH:
-
+        if (schema->prefixSize == 0)
+        {
+            LOG_E("dynamic mode: prefix size must not be 0.");
+            return -1;
+        }
+        if (schema->dynamic.lengthSize == 0)
+        {
+            LOG_E("dynamic mode: length size must not be 0.");
+            return -1;
+        }
         break;
     case MESSAGE_SCHEMA_MODE_FREE_LENGTH:
-
         if (schema->suffixSize == 0)
         {
-            LOG_E("free mode: suffix size=0");
+            LOG_E("free mode: suffix size must not be 0.");
             return -1;
         }
         break;

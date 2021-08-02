@@ -71,15 +71,14 @@ extern "C"
 
     /**
      * @brief 
-     * fixed length mode  : | prefix    | (cmd)             | content   | (crc) | (suffix) |
-     * dynamic length mode: | prefix    | (cmd) | length    | content   | (crc) | (suffix) |
-     * free length mode   : | prefix    | (cmd)             | content   | (crc) | suffix   |
-     * 
+     * fixed length mode    : | prefix    | (cmd)             | (content)   | (crc) | (suffix) |
+     * dynamic length mode  : | prefix    | (cmd) | length    | (content)   | (crc) | (suffix) |
+     * free length mode     : | (prefix)  | (cmd)             | (content)   | (crc) | suffix   |
      */
     typedef struct MessageSchema
     {
         uint8_t prefix[8];
-        uint8_t prefixSize; // prefix size. 1-8, prefix size must not be 0.
+        uint8_t prefixSize; // prefix size. 1-8, prefix size must not be 0, except stream mode.
         MESSAGE_SCHEMA_MODE mode;
         MESSAGE_SCHEMA_SIZE cmdLength; // cmd size. 0-4.
 
