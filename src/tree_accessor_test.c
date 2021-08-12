@@ -4,6 +4,8 @@
 #include "../inc/tree_accessor.h"
 #include <string.h>
 
+#ifdef UNITTEST
+
 static bool test_cfg_raw_getter(const void *context, const int32_t index, void **out);
 static bool test_cfg_value_getter(const void *context, const int32_t index, char *out);
 static bool test_cfg_value_setter(const void *context, const int32_t index, char *in);
@@ -319,3 +321,5 @@ static void get_test3()
     MU_ASSERT(rst);
     MU_ASSERT(strcmp(value, "3000") == 0);
 };
+
+#endif //UNITTEST

@@ -6,7 +6,11 @@ extern "C"
 {
 #endif
 
+#ifdef UNITTEST
+
     void tree_accessor_test();
+
+#endif //UNITTEST
 
 #ifdef __cplusplus
 }

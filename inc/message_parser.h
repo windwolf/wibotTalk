@@ -10,6 +10,7 @@ extern "C"
 #include "shared.h"
 #include "common/ringbuffer.h"
 
+
 #define OP_RESULT_CONTENT_NOT_ENOUGH OP_RESULT_USER_DEFINE_START + 1
 
 #define MESSAGE_PARSER_CMD_CRC_BUFFER_SIZE 4

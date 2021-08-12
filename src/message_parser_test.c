@@ -3,6 +3,9 @@
 #include "minunit.h"
 #include "stdlib.h"
 #include "string.h"
+
+#ifdef UNITTEST
+
 static const uint8_t refData[8] = {0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x03, 0x04};
 static void message_parser_test1_1()
 {
@@ -509,3 +512,5 @@ void message_parser_test()
     free_mode_test_1();
     free_mode_test_2();
 };
+
+#endif //UNITTEST
