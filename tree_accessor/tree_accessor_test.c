@@ -1,7 +1,7 @@
-#include "../inc/tree_accessor_test.h"
+#include "tree_accessor_test.h"
 #include "minunit.h"
 #include <stdlib.h>
-#include "../inc/tree_accessor.h"
+#include "tree_accessor.h"
 #include <string.h>
 
 #ifdef UNITTEST

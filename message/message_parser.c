@@ -1,7 +1,7 @@
 #include "stdint.h"
-#include "../inc/message_parser.h"
+#include "message_parser.h"
 #include "string.h"
-#include "tx_api.h"
+#include "os/os.h"
 
 #define LOG_MODULE "message_parser"
 #include "log.h"
@@ -30,7 +30,7 @@ static void _message_parser_context_preparing(MessageParser *parser);
 
 /**
  * @arg
- * @arg 
+ * @arg
  * @return 0=success, -1=dismatch, 1=not enough chars
  * */
 static int8_t _message_parser_chars_scan(MessageParser *parser, uint8_t *pattern, uint8_t size);
@@ -63,13 +63,13 @@ int8_t message_parser_create(MessageParser *parser, char *name,
 };
 
 /**
- * @brief 
- * 
+ * @brief
+ *
  * @param parser
  * @param customSchema
  * @param parsedFrame
- * @return OP_RESULT 
-*/
+ * @return OP_RESULT
+ */
 OP_RESULT message_parser_frame_get(MessageParser *parser, MessageSchema *customSchema, MessageFrame *parsedFrame)
 {
     uint8_t stage = parser->_stage;
@@ -597,7 +597,7 @@ static bool _message_parser_chars_seek(MessageParser *parser, uint8_t *pattern, 
 
 /**
  * @arg
- * @arg 
+ * @arg
  * @return 1=success, -1=dismatch, 0=not enough chars
  * */
 static int8_t _message_parser_chars_scan(MessageParser *parser, uint8_t *pattern, uint8_t size)

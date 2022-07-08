@@ -1,5 +1,5 @@
 
-#include "../inc/nmea.h"
+#include "nmea.h"
 
 #include <stdlib.h>
 #include <string.h>

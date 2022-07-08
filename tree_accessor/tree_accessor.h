@@ -5,9 +5,9 @@
  *  this module can be used in serial tree or gui/tree menu management.
  * @version 0.1
  * @date 2021-07-27
- * 
+ *
  * @copyright Copyright (c) 2021
- * 
+ *
  */
 
 #ifndef ___TREE_ACCESSOR_H__
@@ -20,7 +20,7 @@ extern "C"
 
 #include "stdint.h"
 #include "shared.h"
-#include "algorithm/inc/basic.h"
+#include "tree.h"
 #include "stdbool.h"
 
 #define CONSOLE_NODE_MAX_DEPTH 16

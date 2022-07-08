@@ -1,5 +1,5 @@
-#include "../inc/nmea.h"
-#include "../inc/nmea_test.h"
+#include "nmea.h"
+#include "nmea_test.h"
 
 NmeaParser parser;
 

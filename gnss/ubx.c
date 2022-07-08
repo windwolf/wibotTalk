@@ -1,4 +1,4 @@
-#include "../inc/ubx.h"
+#include "ubx.h"
 
 static inline bool checksum(uint8_t *msg, uint32_t length)
 {

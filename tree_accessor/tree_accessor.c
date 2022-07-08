@@ -1,4 +1,4 @@
-#include "../inc/tree_accessor.h"
+#include "tree_accessor.h"
 
 #include <ctype.h>
 #include <string.h>

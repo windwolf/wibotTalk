@@ -8,7 +8,7 @@ extern "C"
 
 #include "stdint.h"
 #include "shared.h"
-#include "common/ringbuffer.h"
+#include "ringbuffer.h"
 
 
 #define OP_RESULT_CONTENT_NOT_ENOUGH OP_RESULT_USER_DEFINE_START + 1

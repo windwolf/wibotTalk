@@ -1,5 +1,5 @@
-#include "../inc/message_parser_test.h"
-#include "../inc/message_parser.h"
+#include "message_parser_test.h"
+#include "message_parser.h"
 #include "minunit.h"
 #include "stdlib.h"
 #include "string.h"
