@@ -10,7 +10,6 @@ extern "C"
 #include "shared.h"
 #include "ringbuffer.h"
 
-
 #define OP_RESULT_CONTENT_NOT_ENOUGH OP_RESULT_USER_DEFINE_START + 1
 
 #define MESSAGE_PARSER_CMD_CRC_BUFFER_SIZE 4
@@ -71,10 +70,10 @@ extern "C"
     } MESSAGE_SCHEMA_CRC_MODE;
 
     /**
-     * @brief 
-     * fixed length mode    : | prefix    | (cmd)             | (content)   | (crc) | (suffix) |
-     * dynamic length mode  : | prefix    | (cmd) | length    | (content)   | (crc) | (suffix) |
-     * free length mode     : | (prefix)  | (cmd)             | (content)   | (crc) | suffix   |
+     * @brief
+     * fixed length mode    : | prefix    | (cmd)           | (alterData)  | (content)   | (crc) | (suffix) |
+     * dynamic length mode  : | prefix    | (cmd) | length  | (alterData)  | (content)   | (crc) | (suffix) |
+     * free length mode     : | (prefix)  | (cmd)           | (alterData)  | (content)   | (crc) | suffix   |
      */
     typedef struct MessageSchema
     {

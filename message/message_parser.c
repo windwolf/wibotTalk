@@ -10,7 +10,7 @@ static bool _message_parser_schema_compare(MessageSchema *a, MessageSchema *b);
 
 static void _message_parser_frame_pack(MessageParser *parser, MessageFrame *parsedFrame);
 
-static int8_t _message_parser_block_clear(MessageParser *parser);
+// static int8_t _message_parser_block_clear(MessageParser *parser);
 
 static int8_t _message_parser_schema_check(MessageSchema *schema);
 
@@ -73,7 +73,7 @@ int8_t message_parser_create(MessageParser *parser, char *name,
 OP_RESULT message_parser_frame_get(MessageParser *parser, MessageSchema *customSchema, MessageFrame *parsedFrame)
 {
     uint8_t stage = parser->_stage;
-    uint8_t frameCount = 0;
+    // uint8_t frameCount = 0;
     MessageSchema *schema = parser->_curSchema;
     bool needNewEpic = false;
     if (customSchema != NULL)
@@ -207,7 +207,7 @@ OP_RESULT message_parser_frame_get(MessageParser *parser, MessageSchema *customS
         case MESSAGE_PARSE_STAGE_SEEKING_CRC:
             if (schema->crc.length > 0)
             {
-                uint32_t parsedLength = 0;
+                // uint32_t parsedLength = 0;
                 result = _message_parser_content_try_scan(parser, schema->crc.length, parser->_crc);
                 if (result)
                 {

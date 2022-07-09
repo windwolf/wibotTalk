@@ -94,7 +94,7 @@ bool nmea_scan(const char *sentence, const char *format, ...)
     va_list ap;
     va_start(ap, format);
 
-    char *field = sentence;
+    const char *field = sentence;
     char c = *sentence;
 #define next_field()                            \
     do                                          \
@@ -221,7 +221,7 @@ bool nmea_scan(const char *sentence, const char *format, ...)
                     else if (*field == ' ')
                     {
                         /* Allow spaces at the start of the field. Not NMEA
-                            * conformant, but some modules do this. */
+                         * conformant, but some modules do this. */
                         if (sign != 0 || value != -1 || scale != 0)
                             goto parse_error;
                     }

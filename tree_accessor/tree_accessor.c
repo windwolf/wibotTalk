@@ -57,7 +57,7 @@ void tree_accessor_create(TreeAccessor *tree, TreeValueRawGetter rawGetter, Tree
 
 bool tree_accessor_item_register(TreeAccessor *tree, const char *containerPath, TreeAccessorItemEntry *entry)
 {
-    assert(containerPath != NULL);
+    // assert(containerPath != NULL);
     if (!_tree_accessor_path_parse(tree, containerPath))
     {
         LOG_E("container not exist");
@@ -153,7 +153,7 @@ char **tree_accessor_item_list(TreeAccessor *tree, const char *path)
         if (child != NULL)
         {
             tree->_listBuf[i] = child->name;
-            child = child->base.next;
+            child = (TreeAccessorItemEntry *)child->base.next;
         }
         else
         {
@@ -275,7 +275,7 @@ n00:
         id = "/";
         idSize = 1;
         next_token();
-        //goto n10;
+        // goto n10;
     }
     else
     {
@@ -291,7 +291,7 @@ n00:
 n10:
     if (t != token_end)
     {
-        //goto n20;
+        // goto n20;
     }
     else
     {
@@ -376,14 +376,14 @@ error:
 
 static TreeAccessorItemEntry *_tree_accessor_entry_child_find(TreeAccessorItemEntry *entry, const char *identity, int size)
 {
-    const TreeAccessorItemEntry *child = entry->base.child;
+    const TreeAccessorItemEntry *child = (TreeAccessorItemEntry *)entry->base.child;
     while (child != NULL)
     {
         if (!strncmp(child->name, identity, size))
         {
             return child;
         }
-        child = child->base.next;
+        child = (TreeAccessorItemEntry *)child->base.next;
     };
     return NULL;
 };
