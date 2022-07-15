@@ -73,7 +73,7 @@ extern "C"
     {
         TreeAccessorItemEntry root;
         TreeAccessorContext context;
-        char *_listBuf[CONSOLE_CHILDREN_MAX_SIZE];
+        const char *_listBuf[CONSOLE_CHILDREN_MAX_SIZE];
     } TreeAccessor;
 
     void tree_accessor_create(TreeAccessor *tree, TreeValueRawGetter rawGetter, TreeValueGetter getter, TreeValueSetter setter);
@@ -88,7 +88,7 @@ extern "C"
 
     bool tree_accessor_value_get(TreeAccessor *tree, const char *path, char *outBuffer);
 
-    char **tree_accessor_item_list(TreeAccessor *tree, const char *path);
+    const char **tree_accessor_item_list(TreeAccessor *tree, const char *path);
 
 #ifdef __cplusplus
 }

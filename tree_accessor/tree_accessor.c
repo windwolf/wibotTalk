@@ -27,7 +27,7 @@ typedef enum
 } ConsoleAction;
 
 static inline token_type _tree_accessor_next_token(const char *path, char const **token, char const **end, int32_t *size);
-static inline bool _tree_accessor_ctx_update(TreeAccessorContext *ctx, char *identity, int identitySize, int index);
+static inline bool _tree_accessor_ctx_update(TreeAccessorContext *ctx, const char *identity, int identitySize, int index);
 
 static bool _tree_accessor_evaluate(TreeAccessor *tree, char *in, char *outBuffer, ConsoleAction action);
 static bool _tree_accessor_path_parse(TreeAccessor *tree, const char *path);
@@ -140,7 +140,7 @@ char *tree_accessor_context_path_get(TreeAccessor *tree)
     return ctx->path;
 }
 
-char **tree_accessor_item_list(TreeAccessor *tree, const char *path)
+const char **tree_accessor_item_list(TreeAccessor *tree, const char *path)
 {
     if (!_tree_accessor_path_parse(tree, path))
     {
@@ -250,17 +250,22 @@ static bool _tree_accessor_evaluate(TreeAccessor *tree, char *in, char *outBuffe
                      ^                                      |
                      |-------------- / ----------------------
 */
+#if defined(__GNUC__)
+#pragma GCC diagnostic ignored "-Wunused-label"
+#elif defined(__clang__)
+#pragma clang diagnostic ignored "-Wunused-label"
+#endif
 static bool _tree_accessor_path_parse(TreeAccessor *tree, const char *path)
 {
     if (path == NULL || !strcmp(path, ""))
     {
         return false;
     }
-    char *token;
+    const char *token;
     int32_t tokenSize = -1;
     token_type t;
     int32_t index;
-    char *id;
+    const char *id;
     int32_t idSize;
     TreeAccessorContext *ctx = &tree->context;
 #define next_token() t = _tree_accessor_next_token(path, &token, &path, &tokenSize)
@@ -376,7 +381,7 @@ error:
 
 static TreeAccessorItemEntry *_tree_accessor_entry_child_find(TreeAccessorItemEntry *entry, const char *identity, int size)
 {
-    const TreeAccessorItemEntry *child = (TreeAccessorItemEntry *)entry->base.child;
+    TreeAccessorItemEntry *child = (TreeAccessorItemEntry *)entry->base.child;
     while (child != NULL)
     {
         if (!strncmp(child->name, identity, size))
@@ -388,7 +393,7 @@ static TreeAccessorItemEntry *_tree_accessor_entry_child_find(TreeAccessorItemEn
     return NULL;
 };
 
-static inline bool _tree_accessor_ctx_update(TreeAccessorContext *ctx, char *identity, int identitySize, int index)
+static inline bool _tree_accessor_ctx_update(TreeAccessorContext *ctx, const char *identity, int identitySize, int index)
 {
     if (!strncmp(identity, "/", identitySize))
     {
