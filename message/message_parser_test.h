@@ -6,11 +6,9 @@ extern "C"
 {
 #endif
 
-#ifdef UNITTEST
-
     void message_parser_test();
 
-#endif //UNITTEST
+
 
 #ifdef __cplusplus
 }

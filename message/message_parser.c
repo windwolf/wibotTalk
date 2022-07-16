@@ -41,7 +41,7 @@ int8_t message_parser_create(MessageParser *parser, char *name,
                              MessageSchema *schema,
                              RingBuffer *buffer)
 {
-
+    memset(parser, 0, sizeof(MessageParser));
     uint8_t checkResult = _message_parser_schema_check(schema);
     if (checkResult != 0)
     {
@@ -75,6 +75,10 @@ OP_RESULT message_parser_frame_get(MessageParser *parser, MessageSchema *customS
     uint8_t stage = parser->_stage;
     // uint8_t frameCount = 0;
     MessageSchema *schema = parser->_curSchema;
+    if (schema == NULL)
+    {
+        schema = parser->schema;
+    }
     bool needNewEpic = false;
     if (customSchema != NULL)
     {
@@ -559,7 +563,7 @@ static bool _message_parser_chars_seek(MessageParser *parser, uint8_t *pattern, 
     RingBuffer *buffer = parser->buffer;
     uint32_t totalLength = ringbuffer_count_get(buffer);
     int32_t seekOffset = parser->_seekOffset;
-    if (seekOffset > totalLength)
+    if (seekOffset >= totalLength)
     {
         return false;
     }
