@@ -467,7 +467,7 @@ static void free_mode_test_2()
 
     MessageFrame frame;
     OP_RESULT rst;
-    char fData[64];
+    uint8_t fData[64];
 
     rst = message_parser_frame_get(&parser, &schema, &frame);
     MU_ASSERT(rst == OP_RESULT_OK);
@@ -553,7 +553,7 @@ static void static_mode_test_1()
 
 void message_parser_test()
 {
-    int h = strtol("  ffx", NULL, 16);
+    // int h = strtol("  ffx", NULL, 16);
     MU_ASSERT(sizeof(float) == 4);
     MU_ASSERT(sizeof(double) == 8);
     message_parser_test1_1();
