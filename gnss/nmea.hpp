@@ -1,13 +1,15 @@
 #ifndef __WWTALK_GNSS_NMEA_HPP__
 #define __WWTALK_GNSS_NMEA_HPP__
 #include "base.hpp"
-namespace ww::protocal::gnss {
+namespace ww::protocal::gnss
+{
 
 #define NMEA_SENTENCE_ENTRY_SIZE 16
 
 #define MINMEA_MAX_LENGTH 80
 
-enum NMEA_SENTENCE_ID {
+enum NMEA_SENTENCE_ID
+{
     NMEA_INVALID = -1,
     NMEA_UNKNOWN = 0,
     NMEA_SENTENCE_RMC,
@@ -20,36 +22,42 @@ enum NMEA_SENTENCE_ID {
     NMEA_SENTENCE_ZDA,
 };
 
-enum NMEA_TALKER {
+enum NMEA_TALKER
+{
     NMEA_TALKER_GN = 0,
     NMEA_TALKER_GP,
     NMEA_TALKER_BD,
 };
 
-struct NmeaSentence {
+struct NmeaSentence
+{
     NMEA_TALKER talker;
     NMEA_SENTENCE_ID sentenceId;
 };
 
-struct NmeaFloat {
+struct NmeaFloat
+{
     int32_t value;
     int32_t scale;
 };
 
-struct NmeaDate {
+struct NmeaDate
+{
     int day;
     int month;
     int year;
 };
 
-struct NmeaTime {
+struct NmeaTime
+{
     int hours;
     int minutes;
     int seconds;
     int microseconds;
 };
 
-struct NmeaSentenceDataRmc {
+struct NmeaSentenceDataRmc
+{
     struct NmeaTime time;
     bool valid;
     struct NmeaFloat latitude;
@@ -60,7 +68,8 @@ struct NmeaSentenceDataRmc {
     struct NmeaFloat variation;
 };
 
-struct NmeaSentenceDataGga {
+struct NmeaSentenceDataGga
+{
     struct NmeaTime time;
     struct NmeaFloat latitude;
     struct NmeaFloat longitude;
@@ -74,13 +83,15 @@ struct NmeaSentenceDataGga {
     struct NmeaFloat dgps_age;
 };
 
-enum NMEA_GLL_STATUS {
+enum NMEA_GLL_STATUS
+{
     NMEA_GLL_STATUS_DATA_VALID = 'A',
     MINMEA_GLL_STATUS_DATA_NOT_VALID = 'V',
 };
 
 // FAA mode added to some fields in NMEA 2.3.
-enum NMEA_FAA_MODE {
+enum NMEA_FAA_MODE
+{
     NMEA_FAA_MODE_AUTONOMOUS = 'A',
     NMEA_FAA_MODE_DIFFERENTIAL = 'D',
     NMEA_FAA_MODE_ESTIMATED = 'E',
@@ -90,7 +101,8 @@ enum NMEA_FAA_MODE {
     NMEA_FAA_MODE_PRECISE = 'P',
 };
 
-struct NmeaSentenceDataGll {
+struct NmeaSentenceDataGll
+{
     struct NmeaFloat latitude;
     struct NmeaFloat longitude;
     struct NmeaTime time;
@@ -98,7 +110,8 @@ struct NmeaSentenceDataGll {
     char mode;
 };
 
-struct NmeaSentenceDataGst {
+struct NmeaSentenceDataGst
+{
     struct NmeaTime time;
     struct NmeaFloat rms_deviation;
     struct NmeaFloat semi_major_deviation;
@@ -109,18 +122,21 @@ struct NmeaSentenceDataGst {
     struct NmeaFloat altitude_error_deviation;
 };
 
-enum NMEA_GSA_MODE {
+enum NMEA_GSA_MODE
+{
     NMEA_GPGSA_MODE_AUTO = 'A',
     NMEA_GPGSA_MODE_FORCED = 'M',
 };
 
-enum NMEA_GSA_FIX_TYPE {
+enum NMEA_GSA_FIX_TYPE
+{
     NMEA_GPGSA_FIX_NONE = 1,
     NMEA_GPGSA_FIX_2D = 2,
     NMEA_GPGSA_FIX_3D = 3,
 };
 
-struct NmeaSentenceDataGsa {
+struct NmeaSentenceDataGsa
+{
     char mode;
     int fix_type;
     int sats[12];
@@ -129,21 +145,24 @@ struct NmeaSentenceDataGsa {
     struct NmeaFloat vdop;
 };
 
-struct NmeaSatInfo {
+struct NmeaSatInfo
+{
     int nr;
     int elevation;
     int azimuth;
     int snr;
 };
 
-struct NmeaSentenceDataGsv {
+struct NmeaSentenceDataGsv
+{
     int total_msgs;
     int msg_nr;
     int total_sats;
     struct NmeaSatInfo sats[4];
 };
 
-struct NmeaSentenceDataVtg {
+struct NmeaSentenceDataVtg
+{
     struct NmeaFloat true_track_degrees;
     struct NmeaFloat magnetic_track_degrees;
     struct NmeaFloat speed_knots;
@@ -151,14 +170,16 @@ struct NmeaSentenceDataVtg {
     enum NMEA_FAA_MODE faa_mode;
 };
 
-struct NmeaSentenceDataZda {
+struct NmeaSentenceDataZda
+{
     struct NmeaTime time;
     struct NmeaDate date;
     int hour_offset;
     int minute_offset;
 };
 
-class Sentence {
+class Sentence
+{
   public:
     static bool check(const char *sentence, bool strict);
     static uint8_t checksum(const char *sentence);
@@ -177,7 +198,8 @@ class Sentence {
     static bool scan(const char *sentence, const char *format, ...);
 };
 
-class NmeaSentenceBase {
+class NmeaSentenceBase
+{
   public:
     NmeaSentenceBase(NMEA_SENTENCE_ID id, const char *idStr, NMEA_TALKER talker,
                      const char *talkerStr)
@@ -193,62 +215,72 @@ class NmeaSentenceBase {
     const char *talkerStr;
 };
 
-class NmeaSentenceGNBase : public NmeaSentenceBase {
+class NmeaSentenceGNBase : public NmeaSentenceBase
+{
   public:
     NmeaSentenceGNBase(NMEA_SENTENCE_ID id, const char *idStr)
         : NmeaSentenceBase(id, idStr, NMEA_TALKER_GN, "GN"){};
-    bool parse(void *frame, const char *sentence);
+    bool parse(void *frame, const char *sentence) override;
 };
 
-class NmeaSentenceRMC : public NmeaSentenceGNBase {
+class NmeaSentenceRMC : public NmeaSentenceGNBase
+{
   public:
     NmeaSentenceRMC() : NmeaSentenceGNBase(NMEA_SENTENCE_RMC, "RMC"){};
     bool parse(void *frame, const char *sentence);
 };
 
-class NmeaSentenceGGA : public NmeaSentenceGNBase {
+class NmeaSentenceGGA : public NmeaSentenceGNBase
+{
   public:
     NmeaSentenceGGA() : NmeaSentenceGNBase(NMEA_SENTENCE_GGA, "GGA"){};
-    virtual bool parse(void *frame, const char *sentence);
+    virtual bool parse(void *frame, const char *sentence) override;
 };
 
-class NmeaSentenceGSA : public NmeaSentenceGNBase {
+class NmeaSentenceGSA : public NmeaSentenceGNBase
+{
   public:
     NmeaSentenceGSA() : NmeaSentenceGNBase(NMEA_SENTENCE_GSA, "GSA"){};
-    virtual bool parse(void *frame, const char *sentence);
+    virtual bool parse(void *frame, const char *sentence) override;
 };
 
-class NmeaSentenceGLL : public NmeaSentenceGNBase {
+class NmeaSentenceGLL : public NmeaSentenceGNBase
+{
   public:
     NmeaSentenceGLL() : NmeaSentenceGNBase(NMEA_SENTENCE_GLL, "GLL"){};
-    virtual bool parse(void *frame, const char *sentence);
+    virtual bool parse(void *frame, const char *sentence) override;
 };
 
-class NmeaSentenceGST : public NmeaSentenceGNBase {
+class NmeaSentenceGST : public NmeaSentenceGNBase
+{
   public:
     NmeaSentenceGST() : NmeaSentenceGNBase(NMEA_SENTENCE_GST, "GST"){};
-    virtual bool parse(void *frame, const char *sentence);
+    virtual bool parse(void *frame, const char *sentence) override;
 };
 
-class NmeaSentenceGSV : public NmeaSentenceGNBase {
+class NmeaSentenceGSV : public NmeaSentenceGNBase
+{
   public:
     NmeaSentenceGSV() : NmeaSentenceGNBase(NMEA_SENTENCE_GSV, "GSV"){};
-    virtual bool parse(void *frame, const char *sentence);
+    virtual bool parse(void *frame, const char *sentence) override;
 };
 
-class NmeaSentenceVTG : public NmeaSentenceGNBase {
+class NmeaSentenceVTG : public NmeaSentenceGNBase
+{
   public:
     NmeaSentenceVTG() : NmeaSentenceGNBase(NMEA_SENTENCE_VTG, "VTG"){};
-    virtual bool parse(void *frame, const char *sentence);
+    virtual bool parse(void *frame, const char *sentence) override;
 };
 
-class NmeaSentenceZDA : public NmeaSentenceGNBase {
+class NmeaSentenceZDA : public NmeaSentenceGNBase
+{
   public:
     NmeaSentenceZDA() : NmeaSentenceGNBase(NMEA_SENTENCE_ZDA, "ZDA"){};
-    virtual bool parse(void *frame, const char *sentence);
+    virtual bool parse(void *frame, const char *sentence) override;
 };
 
-class NmeaParser {
+class NmeaParser
+{
 
   public:
     bool sentence_register(NmeaSentenceBase *entry);
@@ -257,8 +289,7 @@ class NmeaParser {
     /**
      * Determine sentence identifier.
      */
-    bool sentence_entry_get(const char *sentence, bool strict,
-                            NmeaSentenceBase **result);
+    bool sentence_entry_get(const char *sentence, bool strict, NmeaSentenceBase **result);
 
   private:
     NmeaSentenceBase *entries[NMEA_SENTENCE_ENTRY_SIZE];

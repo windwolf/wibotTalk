@@ -16,10 +16,8 @@ bool MessageSchema::operator==(const MessageSchema &other) const
     }
 
     rst = this->mode == other.mode && this->cmdLength == other.cmdLength &&
-          this->prefixSize == other.prefixSize &&
-          this->suffixSize == other.suffixSize &&
-          this->alterDataSize == other.alterDataSize &&
-          this->crc.length == other.crc.length &&
+          this->prefixSize == other.prefixSize && this->suffixSize == other.suffixSize &&
+          this->alterDataSize == other.alterDataSize && this->crc.length == other.crc.length &&
           this->crc.range == other.crc.range;
     //   this->crc.crcEnable == other.crc.crcEnable &&
     //   this->crc.mode == other.crc.mode &&
@@ -128,12 +126,12 @@ Result MessageSchema::check() const
     if (this->cmdLength > MESSAGE_PARSER_CMD_CRC_BUFFER_SIZE)
     {
         LOG_E("cmd length must not great than 4.");
-        return Result_GeneralError;
+        return Result::GeneralError;
     }
     if (this->crc.length > MESSAGE_PARSER_CMD_CRC_BUFFER_SIZE)
     {
         LOG_E("crc length must not great than 4.");
-        return Result_GeneralError;
+        return Result::GeneralError;
     }
 
     switch (this->mode)
@@ -142,33 +140,33 @@ Result MessageSchema::check() const
         if (this->prefixSize == 0)
         {
             LOG_E("fixed mode: prefix size must not be 0.");
-            return Result_GeneralError;
+            return Result::GeneralError;
         }
         break;
     case MESSAGE_SCHEMA_MODE_DYNAMIC_LENGTH:
         if (this->prefixSize == 0)
         {
             LOG_E("dynamic mode: prefix size must not be 0.");
-            return Result_GeneralError;
+            return Result::GeneralError;
         }
         if (this->dynamic.lengthSize == 0)
         {
             LOG_E("dynamic mode: length size must not be 0.");
-            return Result_GeneralError;
+            return Result::GeneralError;
         }
         break;
     case MESSAGE_SCHEMA_MODE_FREE_LENGTH:
         if (this->suffixSize == 0)
         {
             LOG_E("free mode: suffix size must not be 0.");
-            return Result_GeneralError;
+            return Result::GeneralError;
         }
         break;
     default:
         break;
     }
 
-    return Result_OK;
+    return Result::OK;
 };
 
 Result MessageFrame::release()
@@ -182,13 +180,13 @@ Result MessageFrame::release()
         this->_released = true;
         return rst;
     }
-    return Result_NoResource;
+    return Result::NoResource;
 };
 Result MessageFrame::extract(uint8_t *buffer)
 {
     uint32_t len = 0;
     Result rst = this->_parser->buffer.read(buffer, this->length, len);
-    if (rst != Result_OK)
+    if (rst != Result::OK)
     {
         return rst;
     }
@@ -203,14 +201,14 @@ Result MessageFrame::content_extract(uint8_t *buffer)
     Result rst;
     len = this->contentStartOffset;
     rst = this->_parser->buffer.read_offset_sync(len);
-    if (rst != Result_OK)
+    if (rst != Result::OK)
     {
         return rst;
     }
     this->_parser->_seekOffset -= len;
     this->_parser->_packetStartOffset -= len;
     rst = this->_parser->buffer.read(buffer, this->contentLength, len);
-    if (rst != Result_OK)
+    if (rst != Result::OK)
     {
         return rst;
     }
@@ -218,7 +216,7 @@ Result MessageFrame::content_extract(uint8_t *buffer)
     this->_parser->_packetStartOffset -= len;
     len = this->length - this->contentStartOffset - this->contentLength;
     rst = this->_parser->buffer.read_offset_sync(len);
-    if (rst != Result_OK)
+    if (rst != Result::OK)
     {
         this->_released = true;
         return rst;
@@ -231,45 +229,42 @@ Result MessageFrame::content_extract(uint8_t *buffer)
 Result MessageFrame::peek(uint32_t offset, uint8_t *data)
 {
     *data = *(uint8_t *)this->_parser->buffer.offset_peek_directly(offset);
-    return Result_OK;
+    return Result::OK;
 };
 Result MessageFrame::content_peek(uint32_t offset, uint8_t *data)
 {
-    *data = *(uint8_t *)this->_parser->buffer.offset_peek_directly(
-        this->contentStartOffset + offset);
-    return Result_OK;
+    *data =
+        *(uint8_t *)this->_parser->buffer.offset_peek_directly(this->contentStartOffset + offset);
+    return Result::OK;
 };
 Result MessageFrame::checksum_calculate()
 {
-    return Result_NotSupport;
+    return Result::NotSupport;
 };
 
 Result MessageParser::init(const MessageSchema &schema)
 {
     Result rst = schema.check();
-    if (rst != Result_OK)
+    if (rst != Result::OK)
     {
         return rst;
     }
 
     this->schema = schema;
 
-    _pattern_nexts_generate(schema.prefix, schema.prefixSize,
-                            this->_prefixPatternNexts);
+    _pattern_nexts_generate(schema.prefix, schema.prefixSize, this->_prefixPatternNexts);
 
     if (schema.suffixSize != 0)
     {
-        _pattern_nexts_generate(schema.suffix, schema.suffixSize,
-                                this->_suffixPatternNexts);
+        _pattern_nexts_generate(schema.suffix, schema.suffixSize, this->_suffixPatternNexts);
     }
 
     this->buffer = buffer;
     this->_stage = MESSAGE_PARSE_STAGE_INIT;
-    return Result_OK;
+    return Result::OK;
 };
 
-Result MessageParser::frame_get(const MessageSchema *customSchema,
-                                MessageFrame &parsedFrame)
+Result MessageParser::frame_get(const MessageSchema *customSchema, MessageFrame &parsedFrame)
 {
     MESSAGE_PARSER_STAGE stage = this->_stage;
     // uint8_t frameCount = 0;
@@ -317,12 +312,10 @@ Result MessageParser::frame_get(const MessageSchema *customSchema,
         case MESSAGE_PARSE_STAGE_SEEKING_PREFIX:
             if (schema->prefixSize > 0)
             {
-                result = _chars_seek(schema->prefix, this->_prefixPatternNexts,
-                                     schema->prefixSize);
+                result = _chars_seek(schema->prefix, this->_prefixPatternNexts, schema->prefixSize);
                 if (result)
                 {
-                    this->buffer.read_offset_sync(this->_seekOffset -
-                                                  schema->prefixSize);
+                    this->buffer.read_offset_sync(this->_seekOffset - schema->prefixSize);
                     this->_packetStartOffset = 0;
                     this->_seekOffset = schema->prefixSize;
                 }
@@ -362,12 +355,10 @@ Result MessageParser::frame_get(const MessageSchema *customSchema,
             else if (mode == MESSAGE_SCHEMA_MODE_DYNAMIC_LENGTH)
             {
                 uint32_t tlen;
-                result = _int_try_scan(schema->dynamic.lengthSize,
-                                       schema->dynamic.endian, &tlen);
+                result = _int_try_scan(schema->dynamic.lengthSize, schema->dynamic.endian, &tlen);
                 if (result)
                 {
-                    this->_frameExpectContentLength =
-                        tlen - schema->overhead_get();
+                    this->_frameExpectContentLength = tlen - schema->overhead_get();
                     this->_frameActualContentLength = 0;
                 }
                 else
@@ -386,8 +377,7 @@ Result MessageParser::frame_get(const MessageSchema *customSchema,
         case MESSAGE_PARSE_STAGE_PARSING_ALTERDATA:
             if (schema->alterDataSize > 0)
             {
-                result =
-                    _content_try_scan(schema->alterDataSize, this->_alterData);
+                result = _content_try_scan(schema->alterDataSize, this->_alterData);
                 if (result)
                 {
                 }
@@ -399,13 +389,12 @@ Result MessageParser::frame_get(const MessageSchema *customSchema,
                 }
             }
         case MESSAGE_PARSE_STAGE_SEEKING_CONTENT:
-            if ((mode != MESSAGE_SCHEMA_MODE_FREE_LENGTH) &&
-                (this->_frameExpectContentLength > 0))
+            if ((mode != MESSAGE_SCHEMA_MODE_FREE_LENGTH) && (this->_frameExpectContentLength > 0))
             {
                 uint32_t parsedLength = 0;
-                result = _content_scan(this->_frameExpectContentLength -
-                                           this->_frameActualContentLength,
-                                       &parsedLength);
+                result =
+                    _content_scan(this->_frameExpectContentLength - this->_frameActualContentLength,
+                                  &parsedLength);
                 this->_frameActualContentLength += parsedLength;
                 if (result)
                 {
@@ -440,8 +429,7 @@ Result MessageParser::frame_get(const MessageSchema *customSchema,
                 }
                 else
                 {
-                    int8_t msrst =
-                        _chars_scan(schema->suffix, schema->suffixSize);
+                    int8_t msrst = _chars_scan(schema->suffix, schema->suffixSize);
                     if (msrst == 1)
                     {
                         result = true;
@@ -471,13 +459,11 @@ Result MessageParser::frame_get(const MessageSchema *customSchema,
         case MESSAGE_PARSE_STAGE_SEEKING_SUFFIX:
             if (schema->mode == MESSAGE_SCHEMA_MODE_FREE_LENGTH)
             {
-                result = _chars_seek(schema->suffix, this->_suffixPatternNexts,
-                                     schema->suffixSize);
+                result = _chars_seek(schema->suffix, this->_suffixPatternNexts, schema->suffixSize);
                 if (result)
                 {
-                    this->_frameActualContentLength =
-                        this->_seekOffset - this->_packetStartOffset -
-                        schema->suffixSize - schema->prefixSize;
+                    this->_frameActualContentLength = this->_seekOffset - this->_packetStartOffset -
+                                                      schema->suffixSize - schema->prefixSize;
                 }
                 else
                 {
@@ -501,11 +487,11 @@ Result MessageParser::frame_get(const MessageSchema *customSchema,
 
     if (result)
     {
-        return Result_OK;
+        return Result::OK;
     }
     else
     {
-        return Result_NoResource;
+        return Result::NoResource;
     }
 };
 
@@ -528,8 +514,8 @@ void MessageParser::_context_preparing()
     }
 };
 
-bool MessageParser::_chars_seek(const uint8_t (&pattern)[8],
-                                const int8_t (&next)[8], uint8_t patternSize)
+bool MessageParser::_chars_seek(const uint8_t (&pattern)[8], const int8_t (&next)[8],
+                                uint8_t patternSize)
 {
     uint32_t totalLength = buffer.count_get();
     int32_t seekOffset = this->_seekOffset;
@@ -593,8 +579,7 @@ int8_t MessageParser::_content_try_scan(uint32_t expectLength, uint8_t *data)
     }
 };
 
-int8_t MessageParser::_int_try_scan(MESSAGE_SCHEMA_SIZE size,
-                                    MESSAGE_SCHEMA_LENGTH_ENDIAN endian,
+int8_t MessageParser::_int_try_scan(MESSAGE_SCHEMA_SIZE size, MESSAGE_SCHEMA_LENGTH_ENDIAN endian,
                                     uint32_t *value)
 {
     uint32_t totalLength = buffer.count_get();
@@ -609,13 +594,11 @@ int8_t MessageParser::_int_try_scan(MESSAGE_SCHEMA_SIZE size,
     {
         if (endian == MESSAGE_SCHEMA_LENGTH_ENDIAN_LITTLE)
         {
-            tmpValue += *(uint8_t *)buffer.offset_peek_directly(seekOffset)
-                        << i;
+            tmpValue += *(uint8_t *)buffer.offset_peek_directly(seekOffset) << i;
         }
         else
         {
-            tmpValue = (tmpValue << 8) +
-                       *(uint8_t *)buffer.offset_peek_directly(seekOffset);
+            tmpValue = (tmpValue << 8) + *(uint8_t *)buffer.offset_peek_directly(seekOffset);
         }
         seekOffset++;
         i++;
@@ -626,8 +609,7 @@ int8_t MessageParser::_int_try_scan(MESSAGE_SCHEMA_SIZE size,
     return true;
 };
 
-int8_t MessageParser::_content_scan(uint32_t expectLength,
-                                    uint32_t *scanedLength)
+int8_t MessageParser::_content_scan(uint32_t expectLength, uint32_t *scanedLength)
 {
 
     uint32_t totalLength = buffer.count_get();
@@ -670,8 +652,7 @@ int8_t MessageParser::_chars_scan(const uint8_t (&pattern)[8], uint8_t size)
     return 1;
 };
 
-void MessageParser::_pattern_nexts_generate(const uint8_t pattern[], uint8_t M,
-                                            int8_t next[])
+void MessageParser::_pattern_nexts_generate(const uint8_t pattern[], uint8_t M, int8_t next[])
 {
     next[0] = 0;
     int k = 0;

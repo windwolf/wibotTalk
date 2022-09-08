@@ -1,11 +1,12 @@
 #include "message_parser_test.hpp"
 #include "string.h"
 #include "minunit.h"
-namespace ww::comm::test {
+namespace ww::comm::test
+{
 
-static const uint8_t refData[8] = {0x01, 0x01, 0x01, 0x01,
-                                   0x01, 0x02, 0x03, 0x04};
-static void message_parser_test1_1() {
+static const uint8_t refData[8] = {0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x03, 0x04};
+static void message_parser_test1_1()
+{
 
     uint8_t buf[64] = {0};
     RingBuffer rb(buf, 1, 64);
@@ -49,8 +50,9 @@ static void message_parser_test1_1() {
 
     // test1_1:2
     rst = parser.frame_get(nullptr, frame);
-    MU_ASSERT(rst == Result_OK);
-    if (rst == Result_OK) {
+    MU_ASSERT(rst == Result::OK);
+    if (rst == Result::OK)
+    {
         MU_VEC_CLEAR(fData, 8);
         frame.content_extract(fData);
         MU_ASSERT_VEC_EQUALS(fData, refData, 8);
@@ -75,8 +77,9 @@ static void message_parser_test1_1() {
 
     // test1_1:3
     rst = parser.frame_get(&schema2, frame);
-    MU_ASSERT(rst == Result_OK);
-    if (rst == Result_OK) {
+    MU_ASSERT(rst == Result::OK);
+    if (rst == Result::OK)
+    {
         MU_VEC_CLEAR(fData, 8);
         frame.content_extract(fData);
         MU_ASSERT_VEC_EQUALS(fData, refData, 8);
@@ -88,28 +91,30 @@ static void message_parser_test1_1() {
 
     // test1_1:4
     rst = parser.frame_get(nullptr, frame);
-    MU_ASSERT(rst == Result_OK);
-    if (rst == Result_OK) {
+    MU_ASSERT(rst == Result::OK);
+    if (rst == Result::OK)
+    {
         MU_VEC_CLEAR(fData, 8);
         frame.content_extract(fData);
         MU_ASSERT_VEC_EQUALS(fData, refData, 8);
     }
 
-    uint8_t wr5Data[12] = {0xEF, 0xFF, 0x01, 0x01, 0x01, 0x01,
-                           0x01, 0x02, 0x03, 0x04, 0x0E, 0x0F};
+    uint8_t wr5Data[12] = {0xEF, 0xFF, 0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x03, 0x04, 0x0E, 0x0F};
     rb.write(wr5Data, 12, true, &aw);
 
     // test1_1:5
     rst = parser.frame_get(&schema2, frame);
-    MU_ASSERT(rst == Result_OK);
-    if (rst == Result_OK) {
+    MU_ASSERT(rst == Result::OK);
+    if (rst == Result::OK)
+    {
         MU_VEC_CLEAR(fData, 8);
         frame.content_extract(fData);
         MU_ASSERT_VEC_EQUALS(fData, refData, 8);
     }
 }
 
-static void message_parser_test1_2() {
+static void message_parser_test1_2()
+{
 
     uint8_t buf[64] = {0};
     RingBuffer rb(buf, 1, 64);
@@ -137,8 +142,7 @@ static void message_parser_test1_2() {
                            0x01, 0x01, 0x01, 0x01, 0x02, 0x03, 0x04};
     uint8_t wr2Data[15] = {0xFA, 0xFB, 0xFC, 0xFD, 0xFA, 0xFB, 0xFD, 0x01,
                            0x01, 0x01, 0x01, 0x01, 0x02, 0x03, 0x04};
-    uint8_t wr3Data[11] = {0x00, 0xEF, 0xFF, 0x01, 0x01, 0x01,
-                           0x01, 0x01, 0x02, 0x03, 0x04};
+    uint8_t wr3Data[11] = {0x00, 0xEF, 0xFF, 0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x03, 0x04};
 
     uint32_t aw;
     rb.write(wr0Data, 3, true, &aw);
@@ -150,17 +154,19 @@ static void message_parser_test1_2() {
     Result rst;
     // test1_2:1
     rst = parser.frame_get(nullptr, frame); // 1
-    MU_ASSERT(rst == Result_OK);
+    MU_ASSERT(rst == Result::OK);
     uint8_t fData[8];
-    if (rst == Result_OK) {
+    if (rst == Result::OK)
+    {
         MU_VEC_CLEAR(fData, 8);
         frame.content_extract(fData);
         MU_ASSERT_VEC_EQUALS(fData, refData, 8);
     }
 
     rst = parser.frame_get(nullptr, frame); // 1
-    MU_ASSERT(rst == Result_OK);
-    if (rst == Result_OK) {
+    MU_ASSERT(rst == Result::OK);
+    if (rst == Result::OK)
+    {
         MU_VEC_CLEAR(fData, 8);
         frame.content_extract(fData);
         MU_ASSERT_VEC_EQUALS(fData, refData, 8);
@@ -182,8 +188,9 @@ static void message_parser_test1_2() {
         .suffixSize = 0,
     };
     rst = parser.frame_get(&schema2, frame); // 1
-    MU_ASSERT(rst == Result_OK);
-    if (rst == Result_OK) {
+    MU_ASSERT(rst == Result::OK);
+    if (rst == Result::OK)
+    {
         MU_VEC_CLEAR(fData, 8);
         frame.content_extract(fData);
         MU_ASSERT_VEC_EQUALS(fData, refData, 8);
@@ -194,27 +201,29 @@ static void message_parser_test1_2() {
     rb.write(wr4Data, 17, true, &aw);
 
     rst = parser.frame_get(nullptr, frame); // 1
-    MU_ASSERT(rst == Result_OK);
-    if (rst == Result_OK) {
+    MU_ASSERT(rst == Result::OK);
+    if (rst == Result::OK)
+    {
         MU_VEC_CLEAR(fData, 8);
         frame.content_extract(fData);
         MU_ASSERT_VEC_EQUALS(fData, refData, 8);
     }
 
-    uint8_t wr5Data[10] = {0xEF, 0xFF, 0x01, 0x01, 0x01,
-                           0x01, 0x01, 0x02, 0x03, 0x04}; // 1
+    uint8_t wr5Data[10] = {0xEF, 0xFF, 0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x03, 0x04}; // 1
     rb.write(wr5Data, 12, true, &aw);
 
     rst = parser.frame_get(&schema2, frame); // 1
-    MU_ASSERT(rst == Result_OK);
-    if (rst == Result_OK) {
+    MU_ASSERT(rst == Result::OK);
+    if (rst == Result::OK)
+    {
         MU_VEC_CLEAR(fData, 8);
         frame.content_extract(fData);
         MU_ASSERT_VEC_EQUALS(fData, refData, 8);
     }
 }
 
-static void message_parser_test2_1() {
+static void message_parser_test2_1()
+{
 
     MessageSchema schema = {
         .prefix = {0xEF, 0xFF},
@@ -240,13 +249,11 @@ static void message_parser_test2_1() {
 
     parser.init(schema);
 
-    uint8_t wr0Data[43] = {0x33, 0xFA, 0xFB, // 3
-                           0xEF, 0xFF, 0x08, 0x01, 0x01, 0x01, 0x01,
-                           0x01, 0x02, 0x03, 0x04, 0x0E, 0x0F, // 13
-                           0xEF, 0xFF, 0x08, 0x01, 0x01, 0x01, 0x01,
-                           0x01, 0x02, 0x03, 0x04, 0x1E, 0x0F, // 13
-                           0x00, 0xEF, 0xFF, 0x08, 0x01, 0x01, 0x01,
-                           0x01, 0x01, 0x02, 0x03, 0x04, 0x0E, 0x0F}; // 14
+    uint8_t wr0Data[43] = {
+        0x33, 0xFA, 0xFB,                                                                    // 3
+        0xEF, 0xFF, 0x08, 0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x03, 0x04, 0x0E, 0x0F,        // 13
+        0xEF, 0xFF, 0x08, 0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x03, 0x04, 0x1E, 0x0F,        // 13
+        0x00, 0xEF, 0xFF, 0x08, 0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x03, 0x04, 0x0E, 0x0F}; // 14
 
     uint32_t aw;
     rb.write(wr0Data, 43, true, &aw);
@@ -255,23 +262,26 @@ static void message_parser_test2_1() {
     Result rst;
     uint8_t fData[8];
     rst = parser.frame_get(&schema, frame);
-    MU_ASSERT(rst == Result_OK);
-    if (rst == Result_OK) {
+    MU_ASSERT(rst == Result::OK);
+    if (rst == Result::OK)
+    {
         MU_VEC_CLEAR(fData, 8);
         frame.content_extract(fData);
         MU_ASSERT_VEC_EQUALS(fData, refData, 8);
     }
 
     rst = parser.frame_get(&schema, frame);
-    MU_ASSERT(rst == Result_OK);
-    if (rst == Result_OK) {
+    MU_ASSERT(rst == Result::OK);
+    if (rst == Result::OK)
+    {
         MU_VEC_CLEAR(fData, 8);
         frame.content_extract(fData);
         MU_ASSERT_VEC_EQUALS(fData, refData, 8);
     }
 }
 
-static void message_parser_test2_2() {
+static void message_parser_test2_2()
+{
     MessageSchema schema = {
         .prefix = {0xEF, 0xFF},
         .prefixSize = 2,
@@ -295,13 +305,11 @@ static void message_parser_test2_2() {
 
     parser.init(schema);
 
-    uint8_t wr0Data[43] = {0x33, 0xFA, 0xFB, // 3
-                           0xEF, 0xFF, 0x08, 0x01, 0x01, 0x01, 0x01,
-                           0x01, 0x02, 0x03, 0x04, 0x0E, 0x0F, // 13
-                           0xEF, 0xFF, 0x08, 0x01, 0x01, 0x01, 0x01,
-                           0x01, 0x02, 0x03, 0x04, 0x1E, 0x0F, // 13
-                           0x00, 0xEF, 0xFF, 0x08, 0x01, 0x01, 0x01,
-                           0x01, 0x01, 0x02, 0x03, 0x04, 0x0E, 0x0F}; // 14
+    uint8_t wr0Data[43] = {
+        0x33, 0xFA, 0xFB,                                                                    // 3
+        0xEF, 0xFF, 0x08, 0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x03, 0x04, 0x0E, 0x0F,        // 13
+        0xEF, 0xFF, 0x08, 0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x03, 0x04, 0x1E, 0x0F,        // 13
+        0x00, 0xEF, 0xFF, 0x08, 0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x03, 0x04, 0x0E, 0x0F}; // 14
 
     uint32_t aw;
     rb.write(wr0Data, sizeof(wr0Data), true, &aw);
@@ -310,31 +318,35 @@ static void message_parser_test2_2() {
     Result rst;
     uint8_t fData[8];
     rst = parser.frame_get(&schema, frame);
-    MU_ASSERT(rst == Result_OK);
-    if (rst == Result_OK) {
+    MU_ASSERT(rst == Result::OK);
+    if (rst == Result::OK)
+    {
         MU_VEC_CLEAR(fData, 8);
         frame.content_extract(fData);
         MU_ASSERT_VEC_EQUALS(fData, refData, 8);
     }
 
     rst = parser.frame_get(&schema, frame);
-    MU_ASSERT(rst == Result_OK);
-    if (rst == Result_OK) {
+    MU_ASSERT(rst == Result::OK);
+    if (rst == Result::OK)
+    {
         MU_VEC_CLEAR(fData, 8);
         frame.content_extract(fData);
         MU_ASSERT_VEC_EQUALS(fData, refData, 8);
     }
 
     rst = parser.frame_get(&schema, frame);
-    MU_ASSERT(rst == Result_OK);
-    if (rst == Result_OK) {
+    MU_ASSERT(rst == Result::OK);
+    if (rst == Result::OK)
+    {
         MU_VEC_CLEAR(fData, 8);
         frame.content_extract(fData);
         MU_ASSERT_VEC_EQUALS(fData, refData, 8);
     }
 }
 
-static void message_parser_test2_3() {
+static void message_parser_test2_3()
+{
 
     MessageSchema schema = {
         .prefix = {0xB5, 0x62},
@@ -345,10 +357,9 @@ static void message_parser_test2_3() {
         .dynamic =
             {
                 .lengthSize = MESSAGE_SCHEMA_SIZE_16BITS,
-                .range =
-                    MESSAGE_SCHEMA_RANGE_PREFIX | MESSAGE_SCHEMA_RANGE_CMD |
-                    MESSAGE_SCHEMA_RANGE_LENGTH | MESSAGE_SCHEMA_RANGE_CONTENT |
-                    MESSAGE_SCHEMA_RANGE_CRC,
+                .range = MESSAGE_SCHEMA_RANGE_PREFIX | MESSAGE_SCHEMA_RANGE_CMD |
+                         MESSAGE_SCHEMA_RANGE_LENGTH | MESSAGE_SCHEMA_RANGE_CONTENT |
+                         MESSAGE_SCHEMA_RANGE_CRC,
             },
         .crc =
             {
@@ -364,13 +375,13 @@ static void message_parser_test2_3() {
     parser.init(schema);
 
     uint8_t wr0Data[50] = {0x33, // 1
-                           0xB5, 0x62, 0x01, 0x02, 0x0F, 0x00, 0x01, 0x01, 0x01,
-                           0x01, 0x01, 0x02, 0x03, 0x04, 0x0E, 0x0F, // 16
-                           0x33,                                     // 1
-                           0xB5, 0x62, 0x01, 0x02, 0x0F, 0x00, 0x01, 0x01, 0x01,
-                           0x01, 0x01, 0x02, 0x03, 0x04, 0x1E, 0x0F, // 16
-                           0xB5, 0x62, 0x01, 0x02, 0x0F, 0x00, 0x01, 0x01, 0x01,
-                           0x01, 0x01, 0x02, 0x03, 0x04, 0x0E, 0x0F}; // 16
+                           0xB5, 0x62, 0x01, 0x02, 0x0F, 0x00, 0x01, 0x01,
+                           0x01, 0x01, 0x01, 0x02, 0x03, 0x04, 0x0E, 0x0F, // 16
+                           0x33,                                           // 1
+                           0xB5, 0x62, 0x01, 0x02, 0x0F, 0x00, 0x01, 0x01,
+                           0x01, 0x01, 0x01, 0x02, 0x03, 0x04, 0x1E, 0x0F, // 16
+                           0xB5, 0x62, 0x01, 0x02, 0x0F, 0x00, 0x01, 0x01,
+                           0x01, 0x01, 0x01, 0x02, 0x03, 0x04, 0x0E, 0x0F}; // 16
 
     uint32_t aw;
     rb.write(wr0Data, 50, true, &aw);
@@ -379,24 +390,27 @@ static void message_parser_test2_3() {
     Result rst;
     uint8_t fData[8];
     rst = parser.frame_get(&schema, frame);
-    MU_ASSERT(rst == Result_OK);
-    if (rst == Result_OK) {
+    MU_ASSERT(rst == Result::OK);
+    if (rst == Result::OK)
+    {
         MU_VEC_CLEAR(fData, 8);
         frame.content_extract(fData);
         MU_ASSERT_VEC_EQUALS(fData, refData, 8);
     }
 
     rst = parser.frame_get(&schema, frame);
-    MU_ASSERT(rst == Result_OK);
-    if (rst == Result_OK) {
+    MU_ASSERT(rst == Result::OK);
+    if (rst == Result::OK)
+    {
         MU_VEC_CLEAR(fData, 8);
         frame.content_extract(fData);
         MU_ASSERT_VEC_EQUALS(fData, refData, 8);
     }
 
     rst = parser.frame_get(&schema, frame);
-    MU_ASSERT(rst == Result_OK);
-    if (rst == Result_OK) {
+    MU_ASSERT(rst == Result::OK);
+    if (rst == Result::OK)
+    {
         MU_VEC_CLEAR(fData, 8);
         frame.content_extract(fData);
         MU_ASSERT_VEC_EQUALS(fData, refData, 8);
@@ -405,23 +419,26 @@ static void message_parser_test2_3() {
     rb.write(wr0Data, 50, true, &aw);
 
     rst = parser.frame_get(&schema, frame);
-    MU_ASSERT(rst == Result_OK);
-    if (rst == Result_OK) {
+    MU_ASSERT(rst == Result::OK);
+    if (rst == Result::OK)
+    {
         MU_VEC_CLEAR(fData, 8);
         frame.content_extract(fData);
         MU_ASSERT_VEC_EQUALS(fData, refData, 8);
     }
 
     rst = parser.frame_get(&schema, frame);
-    MU_ASSERT(rst == Result_OK);
-    if (rst == Result_OK) {
+    MU_ASSERT(rst == Result::OK);
+    if (rst == Result::OK)
+    {
         MU_VEC_CLEAR(fData, 8);
         frame.content_extract(fData);
         MU_ASSERT_VEC_EQUALS(fData, refData, 8);
     }
 }
 
-static void free_mode_test_1() {
+static void free_mode_test_1()
+{
     MessageSchema schema = {
         .prefix = {0xEF, 0xFF},
         .prefixSize = 2,
@@ -440,13 +457,11 @@ static void free_mode_test_1() {
 
     parser.init(schema);
 
-    uint8_t wr0Data[40] = {0x33, 0xFA, 0xFB, // 3
-                           0xEF, 0xFF, 0x01, 0x01, 0x01, 0x01, 0x01,
-                           0x02, 0x03, 0x04, 0x0E, 0x0F, // 12
-                           0xEF, 0xFF, 0x01, 0x01, 0x01, 0x01, 0x01,
-                           0x02, 0x03, 0x04, 0x1E, 0x0F, // 12
-                           0x00, 0xEF, 0xFF, 0x01, 0x01, 0x01, 0x01,
-                           0x01, 0x02, 0x03, 0x04, 0x0E, 0x0F}; // 13
+    uint8_t wr0Data[40] = {
+        0x33, 0xFA, 0xFB,                                                              // 3
+        0xEF, 0xFF, 0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x03, 0x04, 0x0E, 0x0F,        // 12
+        0xEF, 0xFF, 0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x03, 0x04, 0x1E, 0x0F,        // 12
+        0x00, 0xEF, 0xFF, 0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x03, 0x04, 0x0E, 0x0F}; // 13
 
     uint32_t aw;
     rb.write(wr0Data, sizeof(wr0Data), true, &aw);
@@ -455,16 +470,18 @@ static void free_mode_test_1() {
     Result rst;
     uint8_t fData[8];
     rst = parser.frame_get(&schema, frame);
-    MU_ASSERT(rst == Result_OK);
-    if (rst == Result_OK) {
+    MU_ASSERT(rst == Result::OK);
+    if (rst == Result::OK)
+    {
         MU_VEC_CLEAR(fData, 8);
         frame.content_extract(fData);
         MU_ASSERT_VEC_EQUALS(fData, refData, 8);
     }
 
     rst = parser.frame_get(&schema, frame);
-    MU_ASSERT(rst == Result_OK);
-    if (rst == Result_OK) {
+    MU_ASSERT(rst == Result::OK);
+    if (rst == Result::OK)
+    {
         uint8_t fData_2[21];
         static const uint8_t refData2[21] = {
             0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x03, 0x04, 0x1E, 0x0F, // 12
@@ -475,15 +492,17 @@ static void free_mode_test_1() {
     }
 
     rst = parser.frame_get(&schema, frame);
-    MU_ASSERT(rst != Result_OK);
-    if (rst == Result_OK) {
+    MU_ASSERT(rst != Result::OK);
+    if (rst == Result::OK)
+    {
         MU_VEC_CLEAR(fData, 8);
         frame.content_extract(fData);
         MU_ASSERT_VEC_EQUALS(fData, refData, 8);
     }
 }
 
-static void free_mode_test_2() {
+static void free_mode_test_2()
+{
     MessageSchema schema = {
         //.prefix = {0xEF, 0xFF},
         .prefixSize = 0,
@@ -514,33 +533,35 @@ static void free_mode_test_2() {
     uint8_t fData[64];
 
     rst = parser.frame_get(&schema, frame);
-    MU_ASSERT(rst == Result_OK);
-    if (rst == Result_OK) {
+    MU_ASSERT(rst == Result::OK);
+    if (rst == Result::OK)
+    {
         MU_VEC_CLEAR(fData, 64);
         frame.content_extract(fData);
         MU_ASSERT(memcmp(fData, wr0Data, frame.length) == 0);
     }
 
     rst = parser.frame_get(&schema, frame);
-    MU_ASSERT(rst == Result_NoResource);
+    MU_ASSERT(rst == Result::NoResource);
 
     char *wr1Data = "free_mode_test_2\r\nhello, i just wanna you sack!\r";
     rb.write(wr1Data, strlen(wr1Data), true, &aw);
 
     rst = parser.frame_get(&schema, frame);
-    MU_ASSERT(rst == Result_OK);
-    if (rst == Result_OK) {
+    MU_ASSERT(rst == Result::OK);
+    if (rst == Result::OK)
+    {
         MU_VEC_CLEAR(fData, 64);
         frame.content_extract(fData);
-        MU_ASSERT(
-            memcmp(fData, "hello, free_mode_test_2", frame.contentLength) == 0);
+        MU_ASSERT(memcmp(fData, "hello, free_mode_test_2", frame.contentLength) == 0);
     }
 
     rst = parser.frame_get(&schema, frame);
-    MU_ASSERT(rst != Result_OK);
+    MU_ASSERT(rst != Result::OK);
 }
 
-static void static_mode_test_1() {
+static void static_mode_test_1()
+{
     static MessageSchema schema = {
         .prefix = {0xFF, 0xFE},
         .prefixSize = 2,
@@ -578,27 +599,30 @@ static void static_mode_test_1() {
     Result rst;
     uint8_t fData[14];
     rst = parser.frame_get(&schema, frame);
-    MU_ASSERT(rst == Result_OK);
-    if (rst == Result_OK) {
+    MU_ASSERT(rst == Result::OK);
+    if (rst == Result::OK)
+    {
         MU_VEC_CLEAR(fData, 14);
         frame.content_extract(fData);
         MU_ASSERT_VEC_EQUALS(fData, refData, 14);
     }
 
     rst = parser.frame_get(&schema, frame);
-    MU_ASSERT(rst == Result_NoResource);
+    MU_ASSERT(rst == Result::NoResource);
 
     rb.write(wr0Data, sizeof(wr0Data), true, &aw);
     rst = parser.frame_get(&schema, frame);
-    MU_ASSERT(rst == Result_OK);
-    if (rst == Result_OK) {
+    MU_ASSERT(rst == Result::OK);
+    if (rst == Result::OK)
+    {
         MU_VEC_CLEAR(fData, 14);
         frame.content_extract(fData);
         MU_ASSERT_VEC_EQUALS(fData, refData, 14);
     }
 }
 
-void message_parser_test() {
+void message_parser_test()
+{
     // int h = strtol("  ffx", nullptr, 16);
     MU_ASSERT(sizeof(float) == 4);
     MU_ASSERT(sizeof(double) == 8);
