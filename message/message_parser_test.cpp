@@ -523,10 +523,10 @@ static void free_mode_test_2()
 
     parser.init(schema);
 
-    char *wr0Data = "hello, message parser.\r\nhello, ";
+    const char *wr0Data = "hello, message parser.\r\nhello, ";
 
     uint32_t aw;
-    rb.write(wr0Data, strlen(wr0Data), true, &aw);
+    rb.write(static_cast<void *>(const_cast<char *>(wr0Data)), strlen(wr0Data), true, &aw);
 
     MessageFrame frame;
     Result rst;
@@ -544,8 +544,8 @@ static void free_mode_test_2()
     rst = parser.frame_get(&schema, frame);
     MU_ASSERT(rst == Result::NoResource);
 
-    char *wr1Data = "free_mode_test_2\r\nhello, i just wanna you sack!\r";
-    rb.write(wr1Data, strlen(wr1Data), true, &aw);
+    const char *wr1Data = "free_mode_test_2\r\nhello, i just wanna you sack!\r";
+    rb.write(static_cast<void *>(const_cast<char *>(wr1Data)), strlen(wr1Data), true, &aw);
 
     rst = parser.frame_get(&schema, frame);
     MU_ASSERT(rst == Result::OK);
