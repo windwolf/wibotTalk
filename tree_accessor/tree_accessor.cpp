@@ -4,9 +4,9 @@
 
 // #define LOG_MODULE "tree_accessor"
 // #include "log.h"
-// using namespace ww::comm
+// using namespace wibot::comm
 // {
-    
+
 
 
 // enum {
@@ -477,4 +477,4 @@
 //     return strcmp(entry->name, name);
 // };
 
-// } // namespace ww::comm
+// } // namespace wibot::comm

@@ -3,8 +3,9 @@
 
 #include "message_parser.hpp"
 
-namespace ww::comm::test {
-void message_parser_test();
-} // namespace ww::comm::test
+namespace wibot::comm::test
+{
+	void message_parser_test();
+} // namespace wibot::comm::test
 
 #endif // __WWTALK_MESSAGE_PARSER_TEST_HPP__

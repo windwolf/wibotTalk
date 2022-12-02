@@ -16,7 +16,7 @@
 // #include "base.hpp"
 // #include "tree.hpp"
 
-// namespace ww::comm {
+// namespace wibot::comm {
 // #define CONSOLE_NODE_MAX_DEPTH 16
 // #define CONSOLE_CHILDREN_MAX_SIZE 16
 // #define CONSOLE_PATH_MAX_SIZE 256
@@ -80,6 +80,6 @@
 // };
 
 // const char **tree_accessor_item_list(TreeAccessor *tree, const char *path);
-// } // namespace ww::comm
+// } // namespace wibot::comm
 
 // #endif // ___WWTALK_TREE_ACCESSOR_HPP__

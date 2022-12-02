@@ -4,7 +4,7 @@
 // #include "tree_accessor.hpp"
 // #include <string.h>
 
-// namespace ww::comm::test {
+// namespace wibot::comm::test {
 
 // static bool test_cfg_raw_getter(const void *context, const int32_t index,
 //                                 void **out);
@@ -315,4 +315,4 @@
 //     MU_ASSERT(strcmp(value, "3000") == 0);
 // };
 
-// } // namespace ww::comm::test
+// } // namespace wibot::comm::test

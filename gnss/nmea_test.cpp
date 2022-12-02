@@ -1,30 +1,34 @@
 #include "nmea.hpp"
 #include "nmea_test.hpp"
 
-namespace ww::protocal::gnss::test {
-NmeaParser parser;
+namespace wibot::protocal::gnss::test
+{
+	NmeaParser parser;
 
-static void nmea_test_sentence(const char *sentence);
+	static void nmea_test_sentence(const char* sentence);
 
-void nmea_test() {
-    parser.sentence_register_default();
+	void nmea_test()
+	{
+		parser.sentence_register_default();
 
-    nmea_test_sentence("");
-}
+		nmea_test_sentence("");
+	}
 
-static void nmea_test_sentence(const char *sentence) {
-    NmeaSentenceBase *entry;
-    NmeaSentenceDataRmc rmc = {0};
-    parser.sentence_entry_get(sentence, true, &entry);
-    switch (entry->id) {
-    case NMEA_SENTENCE_RMC:
+	static void nmea_test_sentence(const char* sentence)
+	{
+		NmeaSentenceBase* entry;
+		NmeaSentenceDataRmc rmc = { 0 };
+		parser.sentence_entry_get(sentence, true, &entry);
+		switch (entry->id)
+		{
+		case NMEA_SENTENCE_RMC:
 
-        entry->parse(&rmc, sentence);
-        break;
+			entry->parse(&rmc, sentence);
+			break;
 
-    default:
-        break;
-    }
-};
+		default:
+			break;
+		}
+	};
 
-} // namespace ww::protocal::gnss::test
+} // namespace wibot::protocal::gnss::test
