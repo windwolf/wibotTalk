@@ -84,7 +84,11 @@ namespace wibot::comm
 		{
 			struct
 			{
-				uint32_t length; // the length of the content. length must not be 0.
+				/**
+				 * @brief The content length in bytes.
+				 * @note Must not be 0.
+				 */
+				uint32_t length;
 
 			} fixed;
 			struct
