@@ -38,10 +38,10 @@ namespace wibot::comm::test
 								0x01, 0x02, 0x03, 0x04, 0x0E, 0x0F };
 
 		uint32_t aw;
-		rb.write(wr0Data, 3, true, &aw);
-		rb.write(wr1Data, 17, true, &aw);
-		rb.write(wr2Data, 17, true, &aw);
-		rb.write(wr3Data, 13, true, &aw);
+		rb.write(wr0Data, 3, true, aw);
+		rb.write(wr1Data, 17, true, aw);
+		rb.write(wr2Data, 17, true, aw);
+		rb.write(wr3Data, 13, true, aw);
 
 		MessageFrame frame;
 		Result rst;
@@ -87,7 +87,7 @@ namespace wibot::comm::test
 
 		uint8_t wr4Data[17] = { 0xFA, 0xFB, 0xFC, 0xFD, 0xFA, 0xFB, 0xFD, 0x01, 0x01,
 								0x01, 0x01, 0x01, 0x02, 0x03, 0x04, 0x0E, 0x0F };
-		rb.write(wr4Data, 17, true, &aw);
+		rb.write(wr4Data, 17, true, aw);
 
 		// test1_1:4
 		rst = parser.frame_get(nullptr, frame);
@@ -100,7 +100,7 @@ namespace wibot::comm::test
 		}
 
 		uint8_t wr5Data[12] = { 0xEF, 0xFF, 0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x03, 0x04, 0x0E, 0x0F };
-		rb.write(wr5Data, 12, true, &aw);
+		rb.write(wr5Data, 12, true, aw);
 
 		// test1_1:5
 		rst = parser.frame_get(&schema2, frame);
@@ -145,10 +145,10 @@ namespace wibot::comm::test
 		uint8_t wr3Data[11] = { 0x00, 0xEF, 0xFF, 0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x03, 0x04 };
 
 		uint32_t aw;
-		rb.write(wr0Data, 3, true, &aw);
-		rb.write(wr1Data, 15, true, &aw);
-		rb.write(wr2Data, 15, true, &aw);
-		rb.write(wr3Data, 11, true, &aw);
+		rb.write(wr0Data, 3, true, aw);
+		rb.write(wr1Data, 15, true, aw);
+		rb.write(wr2Data, 15, true, aw);
+		rb.write(wr3Data, 11, true, aw);
 
 		MessageFrame frame;
 		Result rst;
@@ -198,7 +198,7 @@ namespace wibot::comm::test
 
 		uint8_t wr4Data[17] = { 0xFA, 0xFB, 0xFC, 0xFD, 0xFA, 0xFB, 0xFD, 0x01, 0x01,
 								0x01, 0x01, 0x01, 0x02, 0x03, 0x04, 0x0E, 0x0F };
-		rb.write(wr4Data, 17, true, &aw);
+		rb.write(wr4Data, 17, true, aw);
 
 		rst = parser.frame_get(nullptr, frame); // 1
 		MU_ASSERT(rst == Result::OK);
@@ -210,7 +210,7 @@ namespace wibot::comm::test
 		}
 
 		uint8_t wr5Data[10] = { 0xEF, 0xFF, 0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x03, 0x04 }; // 1
-		rb.write(wr5Data, 12, true, &aw);
+		rb.write(wr5Data, 12, true, aw);
 
 		rst = parser.frame_get(&schema2, frame); // 1
 		MU_ASSERT(rst == Result::OK);
@@ -256,7 +256,7 @@ namespace wibot::comm::test
 			0x00, 0xEF, 0xFF, 0x08, 0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x03, 0x04, 0x0E, 0x0F }; // 14
 
 		uint32_t aw;
-		rb.write(wr0Data, 43, true, &aw);
+		rb.write(wr0Data, 43, true, aw);
 
 		MessageFrame frame;
 		Result rst;
@@ -312,7 +312,7 @@ namespace wibot::comm::test
 			0x00, 0xEF, 0xFF, 0x08, 0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x03, 0x04, 0x0E, 0x0F }; // 14
 
 		uint32_t aw;
-		rb.write(wr0Data, sizeof(wr0Data), true, &aw);
+		rb.write(wr0Data, sizeof(wr0Data), true, aw);
 
 		MessageFrame frame;
 		Result rst;
@@ -384,7 +384,7 @@ namespace wibot::comm::test
 								0x01, 0x01, 0x01, 0x02, 0x03, 0x04, 0x0E, 0x0F }; // 16
 
 		uint32_t aw;
-		rb.write(wr0Data, 50, true, &aw);
+		rb.write(wr0Data, 50, true, aw);
 
 		MessageFrame frame;
 		Result rst;
@@ -416,7 +416,7 @@ namespace wibot::comm::test
 			MU_ASSERT_VEC_EQUALS(fData, refData, 8);
 		}
 
-		rb.write(wr0Data, 50, true, &aw);
+		rb.write(wr0Data, 50, true, aw);
 
 		rst = parser.frame_get(&schema, frame);
 		MU_ASSERT(rst == Result::OK);
@@ -464,7 +464,7 @@ namespace wibot::comm::test
 			0x00, 0xEF, 0xFF, 0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x03, 0x04, 0x0E, 0x0F }; // 13
 
 		uint32_t aw;
-		rb.write(wr0Data, sizeof(wr0Data), true, &aw);
+		rb.write(wr0Data, sizeof(wr0Data), true, aw);
 
 		MessageFrame frame;
 		Result rst;
@@ -526,7 +526,7 @@ namespace wibot::comm::test
 		const char* wr0Data = "hello, message parser.\r\nhello, ";
 
 		uint32_t aw;
-		rb.write(static_cast<void*>(const_cast<char*>(wr0Data)), strlen(wr0Data), true, &aw);
+		rb.write(static_cast<void*>(const_cast<char*>(wr0Data)), strlen(wr0Data), true, aw);
 
 		MessageFrame frame;
 		Result rst;
@@ -545,7 +545,7 @@ namespace wibot::comm::test
 		MU_ASSERT(rst == Result::NoResource);
 
 		const char* wr1Data = "free_mode_test_2\r\nhello, i just wanna you sack!\r";
-		rb.write(static_cast<void*>(const_cast<char*>(wr1Data)), strlen(wr1Data), true, &aw);
+		rb.write(static_cast<void*>(const_cast<char*>(wr1Data)), strlen(wr1Data), true, aw);
 
 		rst = parser.frame_get(&schema, frame);
 		MU_ASSERT(rst == Result::OK);
@@ -593,7 +593,7 @@ namespace wibot::comm::test
 		uint8_t refData[14] = { 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
 								0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01 };
 		uint32_t aw;
-		rb.write(wr0Data, sizeof(wr0Data), true, &aw);
+		rb.write(wr0Data, sizeof(wr0Data), true, aw);
 
 		MessageFrame frame;
 		Result rst;
@@ -610,7 +610,7 @@ namespace wibot::comm::test
 		rst = parser.frame_get(&schema, frame);
 		MU_ASSERT(rst == Result::NoResource);
 
-		rb.write(wr0Data, sizeof(wr0Data), true, &aw);
+		rb.write(wr0Data, sizeof(wr0Data), true, aw);
 		rst = parser.frame_get(&schema, frame);
 		MU_ASSERT(rst == Result::OK);
 		if (rst == Result::OK)
