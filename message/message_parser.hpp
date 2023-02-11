@@ -63,6 +63,13 @@ namespace wibot::comm
 
 	};
 
+    class CrcCaculator {
+     public:
+        virtual void reset() = 0;
+        virtual void next(const uint8_t* data, uint32_t length) = 0;
+        virtual bool compare(const uint8_t* crc) = 0;
+    };
+
 /**
  * @brief
  * fixed   :
@@ -85,7 +92,7 @@ namespace wibot::comm
 			struct
 			{
 				/**
-				 * @brief The content length in bytes.
+				 * @brief The length of (content) in bytes.
 				 * @note Must not be 0.
 				 */
 				uint32_t length;
@@ -104,16 +111,16 @@ namespace wibot::comm
 
 		struct
 		{
+            // CrcCaculator* calulator;
 			MESSAGE_SCHEMA_SIZE length;
 			MESSAGE_SCHEMA_RANGE range;
-			// MESSAGE_SCHEMA_CRC_MODE mode;
 		} crc;
 		uint8_t suffix[8];
 		uint8_t suffixSize; // suffix size. 0-8, 0 meaning that suffix is not
 		// present. if mode = free, this field must not be 0.
 
 		bool operator==(const MessageSchema& other) const;
-		int32_t overhead_get() const;
+		uint32_t overhead_get() const;
 		Result check() const;
 	};
 	class MessageParser;
@@ -128,7 +135,6 @@ namespace wibot::comm
 		Result content_extract(uint8_t* buffer);
 		Result peek(uint32_t offset, uint8_t* data);
 		Result content_peek(uint32_t offset, uint8_t* data);
-		Result checksum_calculate();
 
 		uint8_t cmd[MESSAGE_PARSER_CMD_CRC_BUFFER_SIZE];
 		int32_t length;
@@ -150,17 +156,18 @@ namespace wibot::comm
 		};
 
 		Result init(const MessageSchema& schema);
-		Result frame_get(const MessageSchema* customSchema,
-			MessageFrame& parsedFrame);
+        Result frame_get(MessageFrame& parsedFrame);
+		Result frame_get(MessageFrame& parsedFrame,
+            const MessageSchema* customSchema);
 
 	 private:
 		friend class MessageFrame;
 
-		MessageSchema schema;
+		MessageSchema _schema;
 		RingBuffer& buffer;
 		const MessageSchema* _curSchema;
 		int32_t _seekOffset; // current working seek offset. initial value is -1.
-		int32_t _patternMatchedCount;
+		int8_t _patternMatchedCount;
 		uint8_t _cmd[MESSAGE_PARSER_CMD_CRC_BUFFER_SIZE];
 		uint8_t _alterData[MESSAGE_PARSER_CMD_CRC_BUFFER_SIZE];
 		int32_t _packetStartOffset;
@@ -185,7 +192,7 @@ namespace wibot::comm
 		int8_t _content_scan(uint32_t expectLength, uint32_t* scanedLength);
 		int8_t _chars_scan(const uint8_t (& pattern)[8], uint8_t size);
 
-		static void _pattern_nexts_generate(const uint8_t pattern[], uint8_t M,
+		static void _pattern_next_generate(const uint8_t pattern[], uint8_t M,
 			int8_t next[]);
 	};
 

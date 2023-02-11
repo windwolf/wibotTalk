@@ -5,6 +5,13 @@
 
 namespace wibot::comm
 {
+//    static void crc_nexts(const MessageSchema* schema, MESSAGE_SCHEMA_RANGE stage, const uint8_t* data, uint32_t length)
+//    {
+//        if (schema->crc.calulator != nullptr && (schema->crc.range & stage)==stage)
+//        {
+//            schema->crc.calulator->next(data, length);
+//        }
+//    }
 
 	bool MessageSchema::operator==(const MessageSchema& other) const
 	{
@@ -65,7 +72,7 @@ namespace wibot::comm
 		return true;
 	};
 
-	int32_t MessageSchema::overhead_get() const
+	uint32_t MessageSchema::overhead_get() const
 	{
 		uint32_t oh = 0;
 		MESSAGE_SCHEMA_RANGE lengthRange = this->dynamic.range;
@@ -237,10 +244,6 @@ namespace wibot::comm
 			*(uint8_t*)this->_parser->buffer.offset_peek_directly(this->contentStartOffset + offset);
 		return Result::OK;
 	};
-	Result MessageFrame::checksum_calculate()
-	{
-		return Result::NotSupport;
-	};
 
 	Result MessageParser::init(const MessageSchema& schema)
 	{
@@ -250,28 +253,32 @@ namespace wibot::comm
 			return rst;
 		}
 
-		this->schema = schema;
+		this->_schema = schema;
 
-		_pattern_nexts_generate(schema.prefix, schema.prefixSize, this->_prefixPatternNexts);
+		_pattern_next_generate(schema.prefix, schema.prefixSize, this->_prefixPatternNexts);
 
 		if (schema.suffixSize != 0)
 		{
-			_pattern_nexts_generate(schema.suffix, schema.suffixSize, this->_suffixPatternNexts);
+			_pattern_next_generate(schema.suffix, schema.suffixSize, this->_suffixPatternNexts);
 		}
 
-		this->buffer = buffer;
 		this->_stage = MESSAGE_PARSE_STAGE_INIT;
 		return Result::OK;
 	};
 
-	Result MessageParser::frame_get(const MessageSchema* customSchema, MessageFrame& parsedFrame)
+    Result MessageParser::frame_get(MessageFrame& parsedFrame) {
+        return frame_get(parsedFrame, nullptr);
+    }
+
+	Result MessageParser::frame_get(MessageFrame& parsedFrame,
+        const MessageSchema* customSchema)
 	{
 		MESSAGE_PARSER_STAGE stage = this->_stage;
 		// uint8_t frameCount = 0;
 		const MessageSchema* schema = this->_curSchema;
 		if (schema == nullptr)
 		{
-			schema = &this->schema;
+			schema = &this->_schema;
 		}
 		bool needNewEpic = false;
 		if (customSchema != nullptr)
@@ -288,14 +295,14 @@ namespace wibot::comm
 		}
 		else
 		{
-			if (this->schema == *schema)
+			if (this->_schema == *schema)
 			{
 			}
 			else
 			{
 				// 没提供自定义schema. 使用默认schema, 如果当前schema就是默认schema,
 				// 则沿用; 否则初始化.
-				schema = &this->schema;
+				schema = &this->_schema;
 				stage = MESSAGE_PARSE_STAGE_INIT;
 			}
 		}
@@ -370,8 +377,7 @@ namespace wibot::comm
 				}
 				else
 				{
-					// mode == MESSAGE_SCHEMA_MODE_FREE_LENGTH || mode ==
-					// MESSAGE_SCHEMA_MODE_STREAM
+					// mode == MESSAGE_SCHEMA_MODE_FREE_LENGTH || mode == MESSAGE_SCHEMA_MODE_STREAM
 					this->_frameExpectContentLength = -1;
 				}
 			case MESSAGE_PARSE_STAGE_PARSING_ALTERDATA:
@@ -398,6 +404,7 @@ namespace wibot::comm
 					this->_frameActualContentLength += parsedLength;
 					if (result)
 					{
+
 					}
 					else
 					{
@@ -499,6 +506,9 @@ namespace wibot::comm
 	{
 		this->_seekOffset = 0;
 		this->_curSchema = schema;
+//        if (this->_curSchema->crc.calulator != nullptr) {
+//            this->_curSchema->crc.calulator->reset();
+//        }
 	};
 
 	void MessageParser::_context_preparing()
@@ -514,6 +524,13 @@ namespace wibot::comm
 		}
 	};
 
+    /**
+     *
+     * @param pattern
+     * @param next
+     * @param patternSize
+     * @return 指示是否匹配成功
+     */
 	bool MessageParser::_chars_seek(const uint8_t (& pattern)[8], const int8_t (& next)[8],
 		uint8_t patternSize)
 	{
@@ -523,7 +540,7 @@ namespace wibot::comm
 		{
 			return false;
 		}
-		int32_t j = this->_patternMatchedCount;
+		int8_t j = this->_patternMatchedCount;
 
 		do
 		{
@@ -617,18 +634,24 @@ namespace wibot::comm
 
 		if ((totalLength - seekOffset) >= expectLength)
 		{
-			this->_seekOffset = seekOffset + expectLength;
+			this->_seekOffset = seekOffset + (int32_t)expectLength;
 			*scanedLength = expectLength;
 			return true;
 		}
 		else
 		{
-			this->_seekOffset = totalLength;
+			this->_seekOffset = (int32_t)totalLength;
 			*scanedLength = totalLength - seekOffset;
 			return false;
 		}
 	};
 
+    /**
+     *
+     * @param pattern
+     * @param size
+     * @return 0: 剩余长度不足，-1: 不匹配，1: 匹配
+     */
 	int8_t MessageParser::_chars_scan(const uint8_t (& pattern)[8], uint8_t size)
 	{
 		uint32_t totalLength = buffer.count_get();
@@ -652,10 +675,10 @@ namespace wibot::comm
 		return 1;
 	};
 
-	void MessageParser::_pattern_nexts_generate(const uint8_t pattern[], uint8_t M, int8_t next[])
+	void MessageParser::_pattern_next_generate(const uint8_t pattern[], uint8_t M, int8_t next[])
 	{
 		next[0] = 0;
-		int k = 0;
+		int8_t k = 0;
 		for (int q = 1; q < M; q++)
 		{
 			while (k > 0 && pattern[k] != pattern[q])
