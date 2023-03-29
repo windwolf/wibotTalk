@@ -71,6 +71,12 @@ namespace wibot::comm
         virtual bool compare(const uint8_t* crc) = 0;
     };
 
+    struct MessageSchemaFixedLengthDefinition
+    {
+        uint8_t command[MESSAGE_PARSER_CMD_CRC_BUFFER_SIZE];
+        uint32_t length;
+    };
+
 /**
  * @brief
  * fixed   :
@@ -98,6 +104,12 @@ namespace wibot::comm
                  */
                 uint32_t length;
 
+                /**
+                 * multi length definitions witch match the command.
+                 */
+                MessageSchemaFixedLengthDefinition* definitions;
+                uint32_t definitionCount;
+
             } fixed;
             struct
             {
@@ -121,8 +133,6 @@ namespace wibot::comm
         // present. if mode = free, this field must not be 0.
 
         bool operator==(const MessageSchema& other) const;
-        uint32_t overhead_get() const;
-        Result check() const;
     };
     class MessageParser;
 
@@ -152,35 +162,40 @@ namespace wibot::comm
     class MessageParser
     {
      public:
-        MessageParser(RingBuffer& buffer) : buffer(buffer)
+        MessageParser(RingBuffer& buffer, uint32_t lengthLimit = 1024) : buffer(buffer)
         {
+            _lengthLimit = lengthLimit;
         };
 
         Result init(const MessageSchema& schema);
-        Result frame_get(MessageFrame& parsedFrame,
-            const MessageSchema* customSchema = nullptr);
+        Result frame_get(MessageFrame& parsedFrame);
 
      private:
         friend class MessageFrame;
 
+        uint32_t _lengthLimit;
         MessageSchema _schema;
+        uint32_t _lengthOverhead;
+        uint32_t _contentOverhead;
         RingBuffer& buffer;
-        const MessageSchema* _curSchema;
         int32_t _seekOffset; // current working seek offset. initial value is -1.
         int8_t _patternMatchedCount;
         uint8_t _cmd[MESSAGE_PARSER_CMD_CRC_BUFFER_SIZE];
         uint8_t _alterData[MESSAGE_PARSER_CMD_CRC_BUFFER_SIZE];
         int32_t _packetStartOffset;
         uint8_t _crc[MESSAGE_PARSER_CMD_CRC_BUFFER_SIZE];
-        int32_t
-            _frameExpectContentLength; // The value represents content length that
-        // been parsed, if block has fixed length.
-        int32_t
-            _frameActualContentLength; // Frame content length that has been parsed.
+        /**
+         * @brief The value represents content length that been parsed, if block has fixed length.
+         */
+        int32_t _frameExpectContentLength;
+        int32_t _frameActualContentLength; // Frame content length that has been parsed.
 
         MESSAGE_PARSER_STAGE _stage;
         int8_t _prefixPatternNexts[8];
         int8_t _suffixPatternNexts[8];
+
+        void calculate_overhead();
+        Result check_schema() const;
 
         void _context_init(const MessageSchema* schema);
         void _context_preparing();
@@ -194,6 +209,8 @@ namespace wibot::comm
 
         static void _pattern_next_generate(const uint8_t pattern[], uint8_t M,
             int8_t next[]);
+
+        uint32_t length_definition_match();
     };
 
 } // namespace wibot::comm

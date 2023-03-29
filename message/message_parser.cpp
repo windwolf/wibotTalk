@@ -5,107 +5,10 @@
 
 namespace wibot::comm
 {
-//    static void crc_nexts(const MessageSchema* schema, MESSAGE_SCHEMA_RANGE stage, const uint8_t* data, uint32_t length)
-//    {
-//        if (schema->crc.calulator != nullptr && (schema->crc.range & stage)==stage)
-//        {
-//            schema->crc.calulator->next(data, length);
-//        }
-//    }
-
-    bool MessageSchema::operator==(const MessageSchema& other) const
-    {
-        bool rst;
-        rst = this == &other;
-        if (rst)
-        {
-            return true;
-        }
-
-        rst = this->mode == other.mode && this->cmdLength == other.cmdLength &&
-            this->prefixSize == other.prefixSize && this->suffixSize == other.suffixSize &&
-            this->alterDataSize == other.alterDataSize && this->crc.length == other.crc.length &&
-            this->crc.range == other.crc.range;
-        //   this->crc.crcEnable == other.crc.crcEnable &&
-        //   this->crc.mode == other.crc.mode &&
-        //   this->crc.range == other.crc.range;
-        if (!rst)
-        {
-            return false;
-        }
-
-        switch (this->mode)
-        {
-        case MESSAGE_SCHEMA_MODE_FIXED_LENGTH:
-
-            rst = this->fixed.length == other.fixed.length;
-            break;
-        case MESSAGE_SCHEMA_MODE_DYNAMIC_LENGTH:
-            rst = this->dynamic.lengthSize == other.dynamic.lengthSize &&
-                this->dynamic.endian == other.dynamic.endian &&
-                this->dynamic.range == other.dynamic.range;
-            break;
-        case MESSAGE_SCHEMA_MODE_FREE_LENGTH:
-
-            break;
-        default:
-            break;
-        }
-        if (!rst)
-        {
-            return false;
-        }
-        for (uint8_t i = 0; i < this->prefixSize; i++)
-        {
-            if (this->prefix[i] != other.prefix[i])
-            {
-                return false;
-            }
-        }
-        for (uint8_t i = 0; i < this->suffixSize; i++)
-        {
-            if (this->suffix[i] != other.suffix[i])
-            {
-                return false;
-            }
-        }
-        return true;
-    };
-
-    uint32_t MessageSchema::overhead_get() const
-    {
-        uint32_t oh = 0;
-        MESSAGE_SCHEMA_RANGE lengthRange = this->dynamic.range;
-        if (lengthRange & MESSAGE_SCHEMA_RANGE_PREFIX)
-        {
-            oh += this->prefixSize;
-        }
-        if (lengthRange & MESSAGE_SCHEMA_RANGE_CMD)
-        {
-            oh += this->cmdLength;
-        }
-        if (lengthRange & MESSAGE_SCHEMA_RANGE_LENGTH)
-        {
-            oh += this->dynamic.lengthSize;
-        }
-        if (lengthRange & MESSAGE_SCHEMA_RANGE_ALTERDATA)
-        {
-            oh += this->alterDataSize;
-        }
-        if (lengthRange & MESSAGE_SCHEMA_RANGE_CRC)
-        {
-            oh += this->crc.length;
-        }
-        if (lengthRange & MESSAGE_SCHEMA_RANGE_SUFFIX)
-        {
-            oh += this->suffixSize;
-        }
-        return oh;
-    };
 
     void MessageFrame::fill(MessageParser* parser)
     {
-        const MessageSchema* schema = parser->_curSchema;
+        const MessageSchema* schema = &parser->_schema;
         this->length = parser->_seekOffset;
         if (schema->mode == MESSAGE_SCHEMA_MODE_DYNAMIC_LENGTH)
         {
@@ -126,61 +29,6 @@ namespace wibot::comm
         this->_parser = parser;
         this->_released = false;
     };
-
-    Result MessageSchema::check() const
-    {
-
-        if (this->cmdLength > MESSAGE_PARSER_CMD_CRC_BUFFER_SIZE)
-        {
-            LOG_E("cmd length must not great than 4.");
-            return Result::GeneralError;
-        }
-        if (this->crc.length > MESSAGE_PARSER_CMD_CRC_BUFFER_SIZE)
-        {
-            LOG_E("crc length must not great than 4.");
-            return Result::GeneralError;
-        }
-
-        switch (this->mode)
-        {
-        case MESSAGE_SCHEMA_MODE_FIXED_LENGTH:
-            if (this->prefixSize == 0)
-            {
-                LOG_E("fixed mode: prefix size must not be 0.");
-                return Result::GeneralError;
-            }
-            break;
-        case MESSAGE_SCHEMA_MODE_DYNAMIC_LENGTH:
-            if (this->prefixSize == 0)
-            {
-                LOG_E("dynamic mode: prefix size must not be 0.");
-                return Result::GeneralError;
-            }
-            if (this->dynamic.lengthSize == 0)
-            {
-                LOG_E("dynamic mode: length size must not be 0.");
-                return Result::GeneralError;
-            }
-            break;
-        case MESSAGE_SCHEMA_MODE_FREE_LENGTH:
-            if (this->suffixSize == 0)
-            {
-                LOG_E("free mode: suffix size must not be 0.");
-                return Result::GeneralError;
-            }
-            if (this->crc.length != 0)
-            {
-                LOG_E("free mode: crc not supported.");
-                return Result::GeneralError;
-            }
-            break;
-        default:
-            break;
-        }
-
-        return Result::OK;
-    };
-
     Result MessageFrame::release()
     {
         if (!this->_released)
@@ -252,150 +100,161 @@ namespace wibot::comm
 
     Result MessageParser::init(const MessageSchema& schema)
     {
-        Result rst = schema.check();
+        this->_schema = schema;
+        Result rst = this->check_schema();
         if (rst != Result::OK)
         {
             return rst;
         }
 
-        this->_schema = schema;
+        this->calculate_overhead();
 
-        _pattern_next_generate(schema.prefix, schema.prefixSize, this->_prefixPatternNexts);
-
-        if (schema.suffixSize != 0)
+        if (this->_schema.prefixSize > 0)
         {
-            _pattern_next_generate(schema.suffix, schema.suffixSize, this->_suffixPatternNexts);
+            _pattern_next_generate(this->_schema.prefix, this->_schema.prefixSize, this->_prefixPatternNexts);
+        }
+
+        if (this->_schema.suffixSize > 0)
+        {
+            _pattern_next_generate(this->_schema.suffix, this->_schema.suffixSize, this->_suffixPatternNexts);
         }
 
         this->_stage = MESSAGE_PARSE_STAGE_INIT;
         return Result::OK;
     };
 
-    Result MessageParser::frame_get(MessageFrame& parsedFrame,
-        const MessageSchema* customSchema)
+    Result MessageParser::frame_get(MessageFrame& parsedFrame)
     {
         MESSAGE_PARSER_STAGE stage = this->_stage;
-        // uint8_t frameCount = 0;
-        const MessageSchema* schema = this->_curSchema;
-        if (schema == nullptr)
-        {
-            schema = &this->_schema;
-        }
-        bool needNewEpic = false;
-        if (customSchema != nullptr)
-        {
-            // 提供了自定义schema. 如果提供的和当前的一致, 则沿用; 否则初始化.
-            if (*customSchema == *schema)
-            {
-            }
-            else
-            {
-                schema = customSchema;
-                stage = MESSAGE_PARSE_STAGE_INIT;
-            }
-        }
-        else
-        {
-            if (this->_schema == *schema)
-            {
-            }
-            else
-            {
-                // 没提供自定义schema. 使用默认schema, 如果当前schema就是默认schema,
-                // 则沿用; 否则初始化.
-                schema = &this->_schema;
-                stage = MESSAGE_PARSE_STAGE_INIT;
-            }
-        }
-        MESSAGE_SCHEMA_MODE mode = schema->mode;
+        auto needNewEpic = false;
+        MESSAGE_SCHEMA_MODE mode = this->_schema.mode;
         bool result = false;
         do
         {
-            switch (stage)
+            if (stage == MESSAGE_PARSE_STAGE_INIT)
             {
-            case MESSAGE_PARSE_STAGE_INIT:
-                _context_init(schema);
-            case MESSAGE_PARSE_STAGE_PREPARING:
-                _context_preparing();
-            case MESSAGE_PARSE_STAGE_SEEKING_PREFIX:
-                if (schema->prefixSize > 0)
+                this->_seekOffset = 0;
+                stage = MESSAGE_PARSE_STAGE_PREPARING;
+            }
+
+            if (stage == MESSAGE_PARSE_STAGE_PREPARING)
+            {
+                this->_frameActualContentLength = 0;
+                this->_frameExpectContentLength = 0;
+                this->_patternMatchedCount = 0;
+                for (uint8_t i = 0; i < MESSAGE_PARSER_CMD_CRC_BUFFER_SIZE; i++)
                 {
-                    result = _chars_seek(schema->prefix, this->_prefixPatternNexts, schema->prefixSize);
+                    this->_cmd[i] = 0;
+                    this->_crc[i] = 0;
+                    this->_alterData[i] = 0;
+                }
+                stage = MESSAGE_PARSE_STAGE_SEEKING_PREFIX;
+            }
+
+            if (stage == MESSAGE_PARSE_STAGE_SEEKING_PREFIX)
+            {
+                if (this->_schema.prefixSize > 0)
+                {
+                    result = _chars_seek(this->_schema.prefix, this->_prefixPatternNexts, this->_schema.prefixSize);
                     if (result)
                     {
-                        this->buffer.read_offset_sync(this->_seekOffset - schema->prefixSize);
+                        this->buffer.read_offset_sync(this->_seekOffset - this->_schema.prefixSize);
                         this->_packetStartOffset = 0;
-                        this->_seekOffset = schema->prefixSize;
+                        this->_seekOffset = this->_schema.prefixSize;
+                        stage = MESSAGE_PARSE_STAGE_PARSING_CMD;
                     }
                     else
                     {
                         stage = MESSAGE_PARSE_STAGE_SEEKING_PREFIX;
                         needNewEpic = false;
-                        break;
                     }
                 }
                 else
                 {
                     this->_packetStartOffset = 0;
+                    stage = MESSAGE_PARSE_STAGE_PARSING_CMD;
                 }
+            }
 
-            case MESSAGE_PARSE_STAGE_PARSING_CMD:
-                if (schema->cmdLength > 0)
+            if (stage == MESSAGE_PARSE_STAGE_PARSING_CMD)
+            {
+                if (this->_schema.cmdLength > 0)
                 {
-
-                    result = _content_try_scan(schema->cmdLength, this->_cmd);
+                    result = _content_try_scan(this->_schema.cmdLength, this->_cmd);
                     if (result)
                     {
+                        stage = MESSAGE_PARSE_STAGE_PARSING_LENGTH;
                     }
                     else
                     {
                         stage = MESSAGE_PARSE_STAGE_PARSING_CMD;
                         needNewEpic = false;
-                        break;
                     }
                 }
-            case MESSAGE_PARSE_STAGE_PARSING_LENGTH:
+            }
+
+            if (stage == MESSAGE_PARSE_STAGE_PARSING_LENGTH)
+            {
                 if (mode == MESSAGE_SCHEMA_MODE_FIXED_LENGTH)
                 {
-                    this->_frameExpectContentLength = schema->fixed.length;
+                    if (this->_schema.fixed.definitionCount == 0)
+                    {
+                        this->_frameExpectContentLength = this->_schema.fixed.length;
+                    }
+                    else
+                    {
+                        this->_frameExpectContentLength = this->length_definition_match();
+                    }
                     this->_frameActualContentLength = 0;
+                    stage = MESSAGE_PARSE_STAGE_PARSING_ALTERDATA;
                 }
                 else if (mode == MESSAGE_SCHEMA_MODE_DYNAMIC_LENGTH)
                 {
                     uint32_t tlen;
-                    result = _int_try_scan(schema->dynamic.lengthSize, schema->dynamic.endian, &tlen);
+                    result = _int_try_scan(this->_schema.dynamic.lengthSize, this->_schema.dynamic.endian, &tlen);
                     if (result)
                     {
-                        this->_frameExpectContentLength = tlen - schema->overhead_get();
+                        this->_frameExpectContentLength = tlen - this->_lengthOverhead;
                         this->_frameActualContentLength = 0;
+                        stage = MESSAGE_PARSE_STAGE_PARSING_ALTERDATA;
                     }
                     else
                     {
                         stage = MESSAGE_PARSE_STAGE_PARSING_LENGTH;
                         needNewEpic = false;
-                        break;
                     }
                 }
                 else
                 {
-                    // mode == MESSAGE_SCHEMA_MODE_FREE_LENGTH || mode == MESSAGE_SCHEMA_MODE_STREAM
+                    // mode == MESSAGE_SCHEMA_MODE_FREE_LENGTH
                     this->_frameExpectContentLength = -1;
+                    stage = MESSAGE_PARSE_STAGE_PARSING_ALTERDATA;
                 }
-            case MESSAGE_PARSE_STAGE_PARSING_ALTERDATA:
-                if (schema->alterDataSize > 0)
+            }
+
+            if (stage == MESSAGE_PARSE_STAGE_PARSING_ALTERDATA)
+            {
+                if (this->_schema.alterDataSize > 0)
                 {
-                    result = _content_try_scan(schema->alterDataSize, this->_alterData);
+                    result = _content_try_scan(this->_schema.alterDataSize, this->_alterData);
                     if (result)
                     {
+                        stage = MESSAGE_PARSE_STAGE_SEEKING_CONTENT;
                     }
                     else
                     {
                         stage = MESSAGE_PARSE_STAGE_PARSING_ALTERDATA;
                         needNewEpic = false;
-                        break;
                     }
                 }
-            case MESSAGE_PARSE_STAGE_SEEKING_CONTENT:
+                else
+                {
+                    stage = MESSAGE_PARSE_STAGE_SEEKING_CONTENT;
+                }
+            }
+
+            if (stage == MESSAGE_PARSE_STAGE_SEEKING_CONTENT)
+            {
                 if ((mode != MESSAGE_SCHEMA_MODE_FREE_LENGTH) && (this->_frameExpectContentLength > 0))
                 {
                     uint32_t parsedLength = 0;
@@ -405,24 +264,32 @@ namespace wibot::comm
                     this->_frameActualContentLength += parsedLength;
                     if (result)
                     {
-
+                        stage = MESSAGE_PARSE_STAGE_SEEKING_CRC;
                     }
                     else
                     {
                         stage = MESSAGE_PARSE_STAGE_SEEKING_CONTENT;
                         needNewEpic = false;
-                        break;
                     }
                 }
-            case MESSAGE_PARSE_STAGE_SEEKING_CRC:
+                else
+                {
+                    // free mode
+                    stage = MESSAGE_PARSE_STAGE_SEEKING_SUFFIX;
+                }
+            }
+
+            if (stage == MESSAGE_PARSE_STAGE_SEEKING_CRC)
+            {
                 if (mode != MESSAGE_SCHEMA_MODE_FREE_LENGTH)
                 {
-                    if (schema->crc.length > 0)
+                    if (this->_schema.crc.length > 0)
                     {
                         // uint32_t parsedLength = 0;
-                        result = _content_try_scan(schema->crc.length, this->_crc);
+                        result = _content_try_scan(this->_schema.crc.length, this->_crc);
                         if (result)
                         {
+                            stage = MESSAGE_PARSE_STAGE_MATCHING_SUFFIX;
                         }
                         else
                         {
@@ -431,28 +298,39 @@ namespace wibot::comm
                             break;
                         }
                     }
+                    else
+                    {
+                        stage = MESSAGE_PARSE_STAGE_MATCHING_SUFFIX;
+                    }
                 }
+                else
+                {
+                    stage = MESSAGE_PARSE_STAGE_MATCHING_SUFFIX;
+                }
+            }
 
-            case MESSAGE_PARSE_STAGE_MATCHING_SUFFIX:
+            if (stage == MESSAGE_PARSE_STAGE_MATCHING_SUFFIX)
+            {
                 if (mode != MESSAGE_SCHEMA_MODE_FREE_LENGTH)
                 {
-                    if (schema->suffixSize == 0)
+                    if (this->_schema.suffixSize == 0)
                     {
+                        stage = MESSAGE_PARSE_STAGE_DONE;
                     }
                     else
                     {
-                        int8_t msrst = _chars_scan(schema->suffix, schema->suffixSize);
+                        int8_t msrst = _chars_scan(this->_schema.suffix, this->_schema.suffixSize);
                         if (msrst == 1)
                         {
-                            result = true;
                             // success
+                            result = true;
+                            stage = MESSAGE_PARSE_STAGE_DONE;
                         }
                         else if (msrst == 0) // not enough buf
                         {
                             result = false;
                             stage = MESSAGE_PARSE_STAGE_MATCHING_SUFFIX;
                             needNewEpic = false;
-                            break;
                         }
                         else // mismatch
                         {
@@ -463,38 +341,38 @@ namespace wibot::comm
                             stage = MESSAGE_PARSE_STAGE_PREPARING;
                             needNewEpic = true;
                             result = false;
-                            break;
                         }
                     }
                 }
-
-            case MESSAGE_PARSE_STAGE_SEEKING_SUFFIX:
-                if (schema->mode == MESSAGE_SCHEMA_MODE_FREE_LENGTH)
+                else
                 {
-                    result = _chars_seek(schema->suffix, this->_suffixPatternNexts, schema->suffixSize);
+                    // free mode
+                    result = _chars_seek(this->_schema.suffix, this->_suffixPatternNexts, this->_schema.suffixSize);
                     if (result)
                     {
                         this->_frameActualContentLength = this->_seekOffset - this->_packetStartOffset -
-                            schema->suffixSize - schema->prefixSize;
+                            this->_schema.suffixSize - this->_schema.prefixSize;
+                        stage = MESSAGE_PARSE_STAGE_DONE;
                     }
                     else
                     {
-                        stage = MESSAGE_PARSE_STAGE_SEEKING_SUFFIX;
+                        stage = MESSAGE_PARSE_STAGE_MATCHING_SUFFIX;
                         needNewEpic = false;
-                        break;
                     }
                 }
-            case MESSAGE_PARSE_STAGE_DONE:
+            }
+
+            if (stage == MESSAGE_PARSE_STAGE_DONE)
+            {
                 parsedFrame.fill(this);
                 stage = MESSAGE_PARSE_STAGE_PREPARING;
                 needNewEpic = false;
                 result = true;
                 break;
-            default:
-                break;
             }
 
         } while (needNewEpic);
+
         this->_stage = stage;
 
         if (result)
@@ -504,28 +382,6 @@ namespace wibot::comm
         else
         {
             return Result::NoResource;
-        }
-    };
-
-    void MessageParser::_context_init(const MessageSchema* schema)
-    {
-        this->_seekOffset = 0;
-        this->_curSchema = schema;
-//        if (this->_curSchema->crc.calulator != nullptr) {
-//            this->_curSchema->crc.calulator->reset();
-//        }
-    };
-
-    void MessageParser::_context_preparing()
-    {
-        this->_frameActualContentLength = 0;
-        this->_frameExpectContentLength = 0;
-        this->_patternMatchedCount = 0;
-        for (uint8_t i = 0; i < MESSAGE_PARSER_CMD_CRC_BUFFER_SIZE; i++)
-        {
-            this->_cmd[i] = 0;
-            this->_crc[i] = 0;
-            this->_alterData[i] = 0;
         }
     };
 
@@ -696,5 +552,139 @@ namespace wibot::comm
             }
             next[q] = k;
         }
+    };
+
+    uint32_t MessageParser::length_definition_match()
+    {
+        for (int i = 0; i < this->_schema.fixed.definitionCount; ++i)
+        {
+            auto def = this->_schema.fixed.definitions[i];
+            auto cmdMatched = true;
+            for (int j = 0; j < this->_schema.cmdLength; ++i)
+            {
+                if (def.command[i] != this->_cmd[i])
+                {
+                    cmdMatched = false;
+                    break;
+                }
+            }
+            if (cmdMatched)
+            {
+                return def.length;
+            }
+        }
+        return this->_schema.fixed.length;
+
+    }
+
+    void MessageParser::calculate_overhead()
+    {
+        uint32_t oh = 0;
+        MESSAGE_SCHEMA_RANGE lengthRange = this->_schema.dynamic.range;
+        if (lengthRange & MESSAGE_SCHEMA_RANGE_PREFIX)
+        {
+            oh += this->_schema.prefixSize;
+        }
+        if (lengthRange & MESSAGE_SCHEMA_RANGE_CMD)
+        {
+            oh += this->_schema.cmdLength;
+        }
+        if (lengthRange & MESSAGE_SCHEMA_RANGE_LENGTH)
+        {
+            oh += this->_schema.dynamic.lengthSize;
+        }
+        if (lengthRange & MESSAGE_SCHEMA_RANGE_ALTERDATA)
+        {
+            oh += this->_schema.alterDataSize;
+        }
+        if (lengthRange & MESSAGE_SCHEMA_RANGE_CRC)
+        {
+            oh += this->_schema.crc.length;
+        }
+        if (lengthRange & MESSAGE_SCHEMA_RANGE_SUFFIX)
+        {
+            oh += this->_schema.suffixSize;
+        }
+        this->_lengthOverhead = oh;
+        oh = 0;
+        if (this->_schema.mode == MESSAGE_SCHEMA_MODE_FIXED_LENGTH)
+        {
+            oh += this->_schema.prefixSize;
+            oh += this->_schema.cmdLength;
+            oh += this->_schema.alterDataSize;
+            oh += this->_schema.crc.length;
+            oh += this->_schema.suffixSize;
+        }
+        else if (this->_schema.mode == MESSAGE_SCHEMA_MODE_DYNAMIC_LENGTH)
+        {
+            oh += this->_schema.prefixSize;
+            oh += this->_schema.cmdLength;
+            oh += this->_schema.dynamic.lengthSize;
+            oh += this->_schema.alterDataSize;
+            oh += this->_schema.crc.length;
+            oh += this->_schema.suffixSize;
+        }
+        else if (this->_schema.mode == MESSAGE_SCHEMA_MODE_FREE_LENGTH)
+        {
+            oh += this->_schema.prefixSize;
+            oh += this->_schema.cmdLength;
+            oh += this->_schema.alterDataSize;
+            oh += this->_schema.suffixSize;
+        }
+        this->_contentOverhead = oh;
+    }
+
+    Result MessageParser::check_schema() const
+    {
+
+        if (this->_schema.cmdLength > MESSAGE_PARSER_CMD_CRC_BUFFER_SIZE)
+        {
+            LOG_E("cmd length must not great than 4.");
+            return Result::GeneralError;
+        }
+        if (this->_schema.crc.length > MESSAGE_PARSER_CMD_CRC_BUFFER_SIZE)
+        {
+            LOG_E("crc length must not great than 4.");
+            return Result::GeneralError;
+        }
+
+        switch (this->_schema.mode)
+        {
+        case MESSAGE_SCHEMA_MODE_FIXED_LENGTH:
+            if (this->_schema.prefixSize == 0)
+            {
+                LOG_E("fixed mode: prefix size must not be 0.");
+                return Result::GeneralError;
+            }
+            break;
+        case MESSAGE_SCHEMA_MODE_DYNAMIC_LENGTH:
+            if (this->_schema.prefixSize == 0)
+            {
+                LOG_E("dynamic mode: prefix size must not be 0.");
+                return Result::GeneralError;
+            }
+            if (this->_schema.dynamic.lengthSize == 0)
+            {
+                LOG_E("dynamic mode: length size must not be 0.");
+                return Result::GeneralError;
+            }
+            break;
+        case MESSAGE_SCHEMA_MODE_FREE_LENGTH:
+            if (this->_schema.suffixSize == 0)
+            {
+                LOG_E("free mode: suffix size must not be 0.");
+                return Result::GeneralError;
+            }
+            if (this->_schema.crc.length != 0)
+            {
+                LOG_E("free mode: crc not supported.");
+                return Result::GeneralError;
+            }
+            break;
+        default:
+            break;
+        }
+
+        return Result::OK;
     };
 } // namespace wibot::comm
