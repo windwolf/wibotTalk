@@ -356,8 +356,9 @@ Result MessageParser::parse(MessageFrame* parsedFrame) {
 void MessageParser::reset() {
     _stage = MESSAGE_PARSE_STAGE::INIT;
 }
-Result MessageParser::_checkLengthSchema(const MessageLengthSchema* lengthSchema) const {
-    if (_schema.commandSize == MESSAGE_SCHEMA_SIZE::NONE) {
+Result MessageParser::_checkLengthSchema(const MessageLengthSchema* lengthSchema,
+                                         bool                       isDefault) const {
+    if (!isDefault && (_schema.commandSize == MESSAGE_SCHEMA_SIZE::NONE)) {
         LOG_E("command size must be none, if use multiple length definition.");
         return Result::GeneralError;
     }
@@ -407,12 +408,12 @@ Result MessageParser::_checkSchema() const {
 
     for (uint32_t i = 0; i < _schema.lengthSchemaCount; ++i) {
         auto& def = _schema.lengthSchemas[i];
-        auto  rst = _checkLengthSchema(&def.length);
+        auto  rst = _checkLengthSchema(&def.length, false);
         if (rst != Result::OK) {
             return rst;
         }
     }
-    return _checkLengthSchema(&_schema.defaultLength);
+    return _checkLengthSchema(&_schema.defaultLength, true);
 }
 bool MessageParser::_seek(const uint8_t (&pattern)[8], uint8_t patternSize) {
     uint32_t totalLength = _buffer.getSize();

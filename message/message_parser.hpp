@@ -179,7 +179,7 @@ class MessageParser {
     uint8_t                    _command[MESSAGE_PARSER_CMD_LENGTH_CRC_BUFFER_SIZE];
 
     Result _checkSchema() const;
-    Result _checkLengthSchema(const MessageLengthSchema* lengthSchema) const;
+    Result _checkLengthSchema(const MessageLengthSchema* lengthSchema, bool isDefault) const;
 
     /**
      * seek the pattern in the buffer, from the current offset to the end.
