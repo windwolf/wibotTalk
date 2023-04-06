@@ -234,7 +234,7 @@ class MessageParser {
 
     Result init(const MessageSchema& schema);
     Result parse(MessageFrame* parsedFrame);
-
+	void reset() { _stage = MESSAGE_PARSE_STAGE_INIT; };
    private:
     CircularBuffer<uint8_t>& _buffer;
     MessageSchema _schema;
