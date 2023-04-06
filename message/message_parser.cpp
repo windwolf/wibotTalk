@@ -1,690 +1,431 @@
 #include "message_parser.hpp"
 
+#include "arch.hpp"
+
 #define LOG_MODULE "message_parser"
 #include "log.h"
 
-namespace wibot::comm
-{
+namespace wibot::comm {
 
-    void MessageFrame::fill(MessageParser* parser)
-    {
-        const MessageSchema* schema = &parser->_schema;
-        this->length = parser->_seekOffset;
-        if (schema->mode == MESSAGE_SCHEMA_MODE_DYNAMIC_LENGTH)
-        {
-            this->contentStartOffset =
-                schema->prefixSize + schema->cmdLength + schema->dynamic.lengthSize;
-        }
-        else
-        {
-            this->contentStartOffset = schema->prefixSize;
-        }
-        this->contentLength = parser->_frameActualContentLength;
-        for (uint8_t i = 0; i < MESSAGE_PARSER_CMD_CRC_BUFFER_SIZE; i++)
-        {
-            this->cmd[i] = parser->_cmd[i];
-            this->crc[i] = parser->_crc[i];
-            this->alterData[i] = parser->_alterData[i];
-        }
-        this->_parser = parser;
-        this->_released = false;
-    };
-    Result MessageFrame::release()
-    {
-        if (!this->_released)
-        {
-            uint32_t len = this->length;
-            Result rst = this->_parser->buffer.read_offset_sync(len);
-            this->_parser->_seekOffset -= len;
-            this->_parser->_packetStartOffset -= len;
-            this->_released = true;
-            return rst;
-        }
-        return Result::NoResource;
-    };
-    Result MessageFrame::extract(uint8_t* buffer)
-    {
-        uint32_t len = 0;
-        Result rst = this->_parser->buffer.read(buffer, this->length, len);
-        if (rst != Result::OK)
-        {
-            return rst;
-        }
-        this->_parser->_seekOffset -= len;
-        this->_parser->_packetStartOffset -= len;
-        this->_released = true;
-        return rst;
-    };
-    Result MessageFrame::content_extract(uint8_t* buffer)
-    {
-        uint32_t len;
-        Result rst;
-        len = this->contentStartOffset;
-        rst = this->_parser->buffer.read_offset_sync(len);
-        if (rst != Result::OK)
-        {
-            return rst;
-        }
-        this->_parser->_seekOffset -= len;
-        this->_parser->_packetStartOffset -= len;
-        rst = this->_parser->buffer.read(buffer, this->contentLength, len);
-        if (rst != Result::OK)
-        {
-            return rst;
-        }
-        this->_parser->_seekOffset -= len;
-        this->_parser->_packetStartOffset -= len;
-        len = this->length - this->contentStartOffset - this->contentLength;
-        rst = this->_parser->buffer.read_offset_sync(len);
-        if (rst != Result::OK)
-        {
-            this->_released = true;
-            return rst;
-        }
-        this->_parser->_seekOffset -= len;
-        this->_parser->_packetStartOffset -= len;
-        this->_released = true;
-        return rst;
-    };
-    Result MessageFrame::peek(uint32_t offset, uint8_t* data)
-    {
-        *data = *(uint8_t*)this->_parser->buffer.offset_peek_directly(offset);
-        return Result::OK;
-    };
-    Result MessageFrame::content_peek(uint32_t offset, uint8_t* data)
-    {
-        *data =
-            *(uint8_t*)this->_parser->buffer.offset_peek_directly(this->contentStartOffset + offset);
-        return Result::OK;
-    };
+using namespace wibot::arch;
 
-    Result MessageParser::init(const MessageSchema& schema)
-    {
-        this->_schema = schema;
-        Result rst = this->check_schema();
-        if (rst != Result::OK)
-        {
-            return rst;
+Result MessageParser::init(const MessageSchema& schema) {
+    _schema = schema;
+
+    _lengthOverhead = _schema.getDynamicLengthOverhead();
+    _contentOverhead = _schema.getContentOverhead();
+    return _checkSchema();
+};
+
+Result MessageParser::parse(MessageFrame* parsedFrame) {
+    if (parsedFrame == nullptr) {
+        return Result::InvalidParameter;
+    }
+
+    MESSAGE_PARSE_STAGE stage = _stage;
+    auto needNewEpic = false;
+    MESSAGE_SCHEMA_MODE mode = _schema.mode;
+    if (_frame != parsedFrame) {
+        _frame = parsedFrame;
+        stage = MESSAGE_PARSE_STAGE::INIT;
+    }
+
+    do {
+        if (stage == MESSAGE_PARSE_STAGE::INIT) {
+            _offset = 0;
+            stage = MESSAGE_PARSE_STAGE::PREPARING;
         }
+        if (stage == MESSAGE_PARSE_STAGE::PREPARING) {
+            _prepareFrame();
 
-        this->calculate_overhead();
-
-        if (this->_schema.prefixSize > 0)
-        {
-            _pattern_next_generate(this->_schema.prefix, this->_schema.prefixSize, this->_prefixPatternNexts);
+            stage = MESSAGE_PARSE_STAGE::SEEKING_PREFIX;
         }
+        if (stage == MESSAGE_PARSE_STAGE::SEEKING_PREFIX) {
+            if (_schema.prefixSize > 0) {
+                _frame->_prefix.offset = 0;
+                auto result = _seek(_schema.prefix, _schema.prefixSize);
+                if (result) {
+                    // found prefix
+                    _remove(_offset);
+                    _move(_schema.prefixSize);
 
-        if (this->_schema.suffixSize > 0)
-        {
-            _pattern_next_generate(this->_schema.suffix, this->_schema.suffixSize, this->_suffixPatternNexts);
-        }
+                    _frame->_prefix.length = _schema.prefixSize;
+                    stage = MESSAGE_PARSE_STAGE::PARSING_CMD;
 
-        this->_stage = MESSAGE_PARSE_STAGE_INIT;
-        return Result::OK;
-    };
-
-    Result MessageParser::frame_get(MessageFrame& parsedFrame)
-    {
-        MESSAGE_PARSER_STAGE stage = this->_stage;
-        auto needNewEpic = false;
-        MESSAGE_SCHEMA_MODE mode = this->_schema.mode;
-        bool result = false;
-        do
-        {
-            if (stage == MESSAGE_PARSE_STAGE_INIT)
-            {
-                this->_seekOffset = 0;
-                stage = MESSAGE_PARSE_STAGE_PREPARING;
+                } else {
+                    // not found prefix
+                    // stay in this stage, and wait for more data.
+                }
+            } else {
+                stage = MESSAGE_PARSE_STAGE::PARSING_CMD;
             }
+        }
 
-            if (stage == MESSAGE_PARSE_STAGE_PREPARING)
-            {
-                this->_frameActualContentLength = 0;
-                this->_frameExpectContentLength = 0;
-                this->_patternMatchedCount = 0;
-                for (uint8_t i = 0; i < MESSAGE_PARSER_CMD_CRC_BUFFER_SIZE; i++)
-                {
-                    this->_cmd[i] = 0;
-                    this->_crc[i] = 0;
-                    this->_alterData[i] = 0;
+        if (stage == MESSAGE_PARSE_STAGE::PARSING_CMD) {
+            if (static_cast<uint8_t>(_schema.commandSize) > 0) {
+                _frame->_command.offset = _offset;
+                auto result = _fetch(_command, static_cast<uint8_t>(_schema.commandSize));
+                if (result) {
+                    _frame->_command.length = static_cast<uint8_t>(_schema.commandSize);
+                    stage = MESSAGE_PARSE_STAGE::PARSING_LENGTH;
+                } else {
+                    // Not enough data to parse command, stay in this stage.
                 }
-                stage = MESSAGE_PARSE_STAGE_SEEKING_PREFIX;
+            } else {
+                stage = MESSAGE_PARSE_STAGE::PARSING_LENGTH;
             }
+        }
 
-            if (stage == MESSAGE_PARSE_STAGE_SEEKING_PREFIX)
-            {
-                if (this->_schema.prefixSize > 0)
-                {
-                    result = _chars_seek(this->_schema.prefix, this->_prefixPatternNexts, this->_schema.prefixSize);
-                    if (result)
-                    {
-                        this->buffer.read_offset_sync(this->_seekOffset - this->_schema.prefixSize);
-                        this->_packetStartOffset = 0;
-                        this->_seekOffset = this->_schema.prefixSize;
-                        stage = MESSAGE_PARSE_STAGE_PARSING_CMD;
-                    }
-                    else
-                    {
-                        stage = MESSAGE_PARSE_STAGE_SEEKING_PREFIX;
-                        needNewEpic = false;
-                    }
+        if (stage == MESSAGE_PARSE_STAGE::PARSING_LENGTH) {
+            if (mode == MESSAGE_SCHEMA_MODE::FIXED_LENGTH) {
+                if (_schema.fixed.definitionCount == 0) {
+                    _contentLength = _schema.fixed.length;
+                } else {
+                    _contentLength = _lengthDefinitionMatch();
                 }
-                else
-                {
-                    this->_packetStartOffset = 0;
-                    stage = MESSAGE_PARSE_STAGE_PARSING_CMD;
+                if ((_contentLength + _contentOverhead) > _frame->_buffer.size) {
+                    _buffer.readVirtual(1);
+                    _offset = 0;
+                    stage = MESSAGE_PARSE_STAGE::PREPARING;
+                    needNewEpic = true;
+                } else {
+                    stage = MESSAGE_PARSE_STAGE::PARSING_ALTERDATA;
                 }
+            } else if (mode == MESSAGE_SCHEMA_MODE::DYNAMIC_LENGTH) {
+                _frame->_length.offset = _offset;
+                uint8_t lengthBuf[MESSAGE_PARSER_CMD_LENGTH_CRC_BUFFER_SIZE];
+                auto result = _fetch(lengthBuf, static_cast<uint8_t>(_schema.dynamic.lengthSize));
+                if (result) {
+                    _contentLength = _parseLength(lengthBuf) - _lengthOverhead;
+                    // check length limitation.
+                    if ((_contentLength + _contentOverhead) > _frame->_buffer.size) {
+                        _buffer.readVirtual(1);
+                        _offset = 0;
+                        stage = MESSAGE_PARSE_STAGE::PREPARING;
+                        needNewEpic = true;
+                    } else {
+                        _frame->_length.length = static_cast<uint8_t>(_schema.dynamic.lengthSize);
+                        stage = MESSAGE_PARSE_STAGE::PARSING_ALTERDATA;
+                    }
+                } else {
+                    // Not enough data to parse length, stay in this stage.
+                }
+            } else {
+                // free length mode, no length field.
+                stage = MESSAGE_PARSE_STAGE::PARSING_ALTERDATA;
             }
+        }
 
-            if (stage == MESSAGE_PARSE_STAGE_PARSING_CMD)
-            {
-                if (this->_schema.cmdLength > 0)
-                {
-                    result = _content_try_scan(this->_schema.cmdLength, this->_cmd);
-                    if (result)
-                    {
-                        stage = MESSAGE_PARSE_STAGE_PARSING_LENGTH;
-                    }
-                    else
-                    {
-                        stage = MESSAGE_PARSE_STAGE_PARSING_CMD;
-                        needNewEpic = false;
-                    }
+        if (stage == MESSAGE_PARSE_STAGE::PARSING_ALTERDATA) {
+            if (static_cast<uint8_t>(_schema.alterDataSize) > 0) {
+                _frame->_alterData.offset = _offset;
+                auto result = _move(static_cast<uint8_t>(_schema.alterDataSize));
+                if (result) {
+                    _frame->_alterData.length = static_cast<uint8_t>(_schema.alterDataSize);
+                    stage = MESSAGE_PARSE_STAGE::SEEKING_CONTENT;
+                } else {
+                    // Not enough data to parse command, stay in this stage.
                 }
+            } else {
+                stage = MESSAGE_PARSE_STAGE::SEEKING_CONTENT;
             }
+        }
 
-            if (stage == MESSAGE_PARSE_STAGE_PARSING_LENGTH)
-            {
-                if (mode == MESSAGE_SCHEMA_MODE_FIXED_LENGTH)
-                {
-                    if (this->_schema.fixed.definitionCount == 0)
-                    {
-                        this->_frameExpectContentLength = this->_schema.fixed.length;
+        if (stage == MESSAGE_PARSE_STAGE::SEEKING_CONTENT) {
+            if (mode != MESSAGE_SCHEMA_MODE::FREE_LENGTH) {
+                if (_contentLength > 0) {
+                    _frame->_content.offset = _offset;
+                    auto result = _move(_contentLength);
+                    if (result) {
+                        _frame->_content.length = _contentLength;
+                        stage = MESSAGE_PARSE_STAGE::SEEKING_CRC;
+                    } else {
+                        // Not enough data for content, stay in this stage.
                     }
-                    else
-                    {
-                        this->_frameExpectContentLength = this->length_definition_match();
-                    }
-                    this->_frameActualContentLength = 0;
-                    stage = MESSAGE_PARSE_STAGE_PARSING_ALTERDATA;
+                } else {
+                    stage = MESSAGE_PARSE_STAGE::SEEKING_CRC;
                 }
-                else if (mode == MESSAGE_SCHEMA_MODE_DYNAMIC_LENGTH)
-                {
-                    uint32_t tlen;
-                    result = _int_try_scan(this->_schema.dynamic.lengthSize, this->_schema.dynamic.endian, &tlen);
-                    if (result)
-                    {
-                        this->_frameExpectContentLength = tlen - this->_lengthOverhead;
-                        this->_frameActualContentLength = 0;
-                        stage = MESSAGE_PARSE_STAGE_PARSING_ALTERDATA;
-                    }
-                    else
-                    {
-                        stage = MESSAGE_PARSE_STAGE_PARSING_LENGTH;
-                        needNewEpic = false;
-                    }
+            } else {
+                // free mode
+                // record the start index.
+                _freeContentStartIndex = _offset;
+                _frame->_content.offset = _freeContentStartIndex;
+                // not support crc, so skip crc stage.
+                stage = MESSAGE_PARSE_STAGE::MATCHING_SUFFIX;
+            }
+        }
+
+        if (stage == MESSAGE_PARSE_STAGE::SEEKING_CRC) {
+            if (static_cast<uint8_t>(_schema.crcSize) > 0) {
+                _frame->_crc.offset = _offset;
+                auto result = _move(static_cast<uint8_t>(_schema.crcSize));
+                if (result) {
+                    _frame->_crc.length = static_cast<uint8_t>(_schema.crcSize);
+                    stage = MESSAGE_PARSE_STAGE::MATCHING_SUFFIX;
+                } else {
+                    // Not enough data for crc, stay in this stage.
                 }
-                else
-                {
-                    // mode == MESSAGE_SCHEMA_MODE_FREE_LENGTH
-                    this->_frameExpectContentLength = -1;
-                    stage = MESSAGE_PARSE_STAGE_PARSING_ALTERDATA;
+            } else {
+                stage = MESSAGE_PARSE_STAGE::MATCHING_SUFFIX;
+            }
+        }
+
+        if (stage == MESSAGE_PARSE_STAGE::MATCHING_SUFFIX) {
+            if (mode != MESSAGE_SCHEMA_MODE::FREE_LENGTH) {
+                if (_schema.suffixSize > 0) {
+                    _frame->_suffix.offset = _offset;
+                    auto result = _match(_schema.suffix, _schema.suffixSize);
+                    if (result == 1) {
+                        // success
+                        _frame->_suffix.length = _schema.suffixSize;
+                        stage = MESSAGE_PARSE_STAGE::DONE;
+                    } else if (result == -1) {
+                        // not enough buffer, stay in this stage.
+                    } else {
+                        // mismatch
+                        // discard one data that has been parsed.
+                        _buffer.readVirtual(1);
+                        _offset = 0;
+                        stage = MESSAGE_PARSE_STAGE::PREPARING;
+                        needNewEpic = true;
+                    }
+                } else {
+                    stage = MESSAGE_PARSE_STAGE::DONE;
+                }
+            } else {
+                // free mode
+                auto result = _seek(_schema.suffix, _schema.suffixSize);
+                if (_offset - _freeContentStartIndex + _contentOverhead > _frame->_buffer.size) {
+                    // discard one data that has been parsed.
+                    _buffer.readVirtual(1);
+                    _offset = 0;
+                    stage = MESSAGE_PARSE_STAGE::PREPARING;
+                    needNewEpic = true;
+                }
+                if (result) {
+                    _contentLength = _offset - _freeContentStartIndex;
+                    _frame->_content.length = _contentLength;
+                    _frame->_suffix.offset = _offset;
+                    _move(_schema.suffixSize);
+                    _frame->_suffix.length = _schema.suffixSize;
+                    stage = MESSAGE_PARSE_STAGE::DONE;
+                } else {
+                    // suffix not found, stay in this stage.
                 }
             }
+        }
 
-            if (stage == MESSAGE_PARSE_STAGE_PARSING_ALTERDATA)
-            {
-                if (this->_schema.alterDataSize > 0)
-                {
-                    result = _content_try_scan(this->_schema.alterDataSize, this->_alterData);
-                    if (result)
-                    {
-                        stage = MESSAGE_PARSE_STAGE_SEEKING_CONTENT;
-                    }
-                    else
-                    {
-                        stage = MESSAGE_PARSE_STAGE_PARSING_ALTERDATA;
-                        needNewEpic = false;
-                    }
-                }
-                else
-                {
-                    stage = MESSAGE_PARSE_STAGE_SEEKING_CONTENT;
-                }
-            }
+        if (stage == MESSAGE_PARSE_STAGE::DONE) {
+            _frame->_frameLength = _offset;
+            _buffer.read(_frame->_buffer.data, _offset);
+            _offset = 0;
+            stage = MESSAGE_PARSE_STAGE::PREPARING;
 
-            if (stage == MESSAGE_PARSE_STAGE_SEEKING_CONTENT)
-            {
-                if ((mode != MESSAGE_SCHEMA_MODE_FREE_LENGTH) && (this->_frameExpectContentLength > 0))
-                {
-                    uint32_t parsedLength = 0;
-                    result =
-                        _content_scan(this->_frameExpectContentLength - this->_frameActualContentLength,
-                            &parsedLength);
-                    this->_frameActualContentLength += parsedLength;
-                    if (result)
-                    {
-                        stage = MESSAGE_PARSE_STAGE_SEEKING_CRC;
-                    }
-                    else
-                    {
-                        stage = MESSAGE_PARSE_STAGE_SEEKING_CONTENT;
-                        needNewEpic = false;
-                    }
-                }
-                else
-                {
-                    // free mode
-                    stage = MESSAGE_PARSE_STAGE_SEEKING_SUFFIX;
-                }
-            }
-
-            if (stage == MESSAGE_PARSE_STAGE_SEEKING_CRC)
-            {
-                if (mode != MESSAGE_SCHEMA_MODE_FREE_LENGTH)
-                {
-                    if (this->_schema.crc.length > 0)
-                    {
-                        // uint32_t parsedLength = 0;
-                        result = _content_try_scan(this->_schema.crc.length, this->_crc);
-                        if (result)
-                        {
-                            stage = MESSAGE_PARSE_STAGE_MATCHING_SUFFIX;
-                        }
-                        else
-                        {
-                            stage = MESSAGE_PARSE_STAGE_SEEKING_CRC;
-                            needNewEpic = false;
-                            break;
-                        }
-                    }
-                    else
-                    {
-                        stage = MESSAGE_PARSE_STAGE_MATCHING_SUFFIX;
-                    }
-                }
-                else
-                {
-                    stage = MESSAGE_PARSE_STAGE_MATCHING_SUFFIX;
-                }
-            }
-
-            if (stage == MESSAGE_PARSE_STAGE_MATCHING_SUFFIX)
-            {
-                if (mode != MESSAGE_SCHEMA_MODE_FREE_LENGTH)
-                {
-                    if (this->_schema.suffixSize == 0)
-                    {
-                        stage = MESSAGE_PARSE_STAGE_DONE;
-                    }
-                    else
-                    {
-                        int8_t msrst = _chars_scan(this->_schema.suffix, this->_schema.suffixSize);
-                        if (msrst == 1)
-                        {
-                            // success
-                            result = true;
-                            stage = MESSAGE_PARSE_STAGE_DONE;
-                        }
-                        else if (msrst == 0) // not enough buf
-                        {
-                            result = false;
-                            stage = MESSAGE_PARSE_STAGE_MATCHING_SUFFIX;
-                            needNewEpic = false;
-                        }
-                        else // mismatch
-                        {
-                            // discard all the data that has been parsed.
-                            this->buffer.read_offset_sync(this->_seekOffset);
-                            this->_packetStartOffset = 0;
-                            this->_seekOffset = 0;
-                            stage = MESSAGE_PARSE_STAGE_PREPARING;
-                            needNewEpic = true;
-                            result = false;
-                        }
-                    }
-                }
-                else
-                {
-                    // free mode
-                    result = _chars_seek(this->_schema.suffix, this->_suffixPatternNexts, this->_schema.suffixSize);
-                    if (result)
-                    {
-                        this->_frameActualContentLength = this->_seekOffset - this->_packetStartOffset -
-                            this->_schema.suffixSize - this->_schema.prefixSize;
-                        stage = MESSAGE_PARSE_STAGE_DONE;
-                    }
-                    else
-                    {
-                        stage = MESSAGE_PARSE_STAGE_MATCHING_SUFFIX;
-                        needNewEpic = false;
-                    }
-                }
-            }
-
-            if (stage == MESSAGE_PARSE_STAGE_DONE)
-            {
-                parsedFrame.fill(this);
-                stage = MESSAGE_PARSE_STAGE_PREPARING;
-                needNewEpic = false;
-                result = true;
-                break;
-            }
-
-        } while (needNewEpic);
-
-        this->_stage = stage;
-
-        if (result)
-        {
+            _stage = stage;
             return Result::OK;
         }
-        else
-        {
-            return Result::NoResource;
-        }
-    };
 
-    /**
-     *
-     * @param pattern
-     * @param next
-     * @param patternSize
-     * @return 指示是否匹配成功
-     */
-    bool MessageParser::_chars_seek(const uint8_t (& pattern)[8], const int8_t (& next)[8],
-        uint8_t patternSize)
-    {
-        uint32_t totalLength = buffer.count_get();
-        int32_t seekOffset = this->_seekOffset;
-        if (seekOffset >= (int32_t)totalLength)
-        {
-            return false;
-        }
-        int8_t j = this->_patternMatchedCount;
+    } while (needNewEpic);
 
-        do
-        {
-            uint8_t vt = *(uint8_t*)buffer.offset_peek_directly(seekOffset);
-            if (pattern[j] == vt)
-            {
-                // matched
-                j++;
-                seekOffset++;
-            }
-            else
-            {
-                // unmatched
-                if (j == 0)
-                {
-                    // first char
-                    seekOffset++;
-                }
-                else
-                {
-                    // not first char
-                    j = next[j];
-                }
-            }
-        } while (j < patternSize && seekOffset < (int32_t)totalLength);
-        this->_seekOffset = seekOffset;
-        this->_patternMatchedCount = j;
+    _stage = stage;
 
-        return j == patternSize;
-    };
+    return Result::NoResource;
+};
 
-    int8_t MessageParser::_content_try_scan(uint32_t expectLength, uint8_t* data)
-    {
-
-        uint32_t totalLength = buffer.count_get();
-        int32_t seekOffset = this->_seekOffset;
-
-        if ((totalLength - seekOffset) < expectLength)
-        {
-            return false;
-        }
-        else
-        {
-            do
-            {
-                *data = *(uint8_t*)buffer.offset_peek_directly(seekOffset);
-                seekOffset++;
-                data++;
-                expectLength--;
-            } while (expectLength > 0);
-            this->_seekOffset = seekOffset;
-            return true;
-        }
-    };
-
-    int8_t MessageParser::_int_try_scan(MESSAGE_SCHEMA_SIZE size, MESSAGE_SCHEMA_LENGTH_ENDIAN endian,
-        uint32_t* value)
-    {
-        uint32_t totalLength = buffer.count_get();
-        int32_t seekOffset = this->_seekOffset;
-        if ((totalLength - seekOffset) < size)
-        {
-            return false;
-        }
-        uint8_t i = 0;
-        uint16_t tmpValue = 0;
-        do
-        {
-            if (endian == MESSAGE_SCHEMA_LENGTH_ENDIAN_LITTLE)
-            {
-                tmpValue += *(uint8_t*)buffer.offset_peek_directly(seekOffset) << i;
-            }
-            else
-            {
-                tmpValue = (tmpValue << 8) + *(uint8_t*)buffer.offset_peek_directly(seekOffset);
-            }
-            seekOffset++;
-            i++;
-        } while (i < size);
-        *value = tmpValue;
-
-        this->_seekOffset = seekOffset;
-        return true;
-    };
-
-    int8_t MessageParser::_content_scan(uint32_t expectLength, uint32_t* scanedLength)
-    {
-
-        uint32_t totalLength = buffer.count_get();
-        int32_t seekOffset = this->_seekOffset;
-
-        if ((totalLength - seekOffset) >= expectLength)
-        {
-            this->_seekOffset = seekOffset + (int32_t)expectLength;
-            *scanedLength = expectLength;
-            return true;
-        }
-        else
-        {
-            this->_seekOffset = (int32_t)totalLength;
-            *scanedLength = totalLength - seekOffset;
-            return false;
-        }
-    };
-
-    /**
-     *
-     * @param pattern
-     * @param size
-     * @return 0: 剩余长度不足，-1: 不匹配，1: 匹配
-     */
-    int8_t MessageParser::_chars_scan(const uint8_t (& pattern)[8], uint8_t size)
-    {
-        uint32_t totalLength = buffer.count_get();
-        int32_t seekOffset = this->_seekOffset;
-
-        if ((seekOffset + size) > (int32_t)totalLength)
-        {
-            return 0;
-        }
-        for (uint8_t i = 0; i < size; i++)
-        {
-            uint32_t seekIndex = buffer.offset_to_index_convert(seekOffset);
-            seekOffset++;
-            if (*(uint8_t*)buffer.index_peek_directly(seekIndex) != pattern[i])
-            {
-                this->_seekOffset = seekOffset;
-                return -1;
+uint32_t MessageParser::_lengthDefinitionMatch() {
+    for (uint32_t i = 0; i < _schema.fixed.definitionCount; ++i) {
+        auto def = _schema.fixed.definitions[i];
+        auto cmdMatched = true;
+        for (int j = 0; j < static_cast<uint8_t>(_schema.commandSize); ++j) {
+            if (def.command[j] != _command[j]) {
+                cmdMatched = false;
+                break;
             }
         }
-        this->_seekOffset = seekOffset;
-        return 1;
-    };
-
-    void MessageParser::_pattern_next_generate(const uint8_t pattern[], uint8_t M, int8_t next[])
-    {
-        next[0] = 0;
-        int8_t k = 0;
-        for (int q = 1; q < M; q++)
-        {
-            while (k > 0 && pattern[k] != pattern[q])
-            {
-                k = next[k];
-            }
-            if (pattern[k] == pattern[q])
-            {
-                k++;
-            }
-            next[q] = k;
+        if (cmdMatched) {
+            return def.length;
         }
-    };
+    }
+    return _schema.fixed.length;
+}
 
-    uint32_t MessageParser::length_definition_match()
-    {
-        for (int i = 0; i < this->_schema.fixed.definitionCount; ++i)
-        {
-            auto def = this->_schema.fixed.definitions[i];
-            auto cmdMatched = true;
-            for (int j = 0; j < this->_schema.cmdLength; ++i)
-            {
-                if (def.command[i] != this->_cmd[i])
-                {
-                    cmdMatched = false;
-                    break;
-                }
-            }
-            if (cmdMatched)
-            {
-                return def.length;
-            }
-        }
-        return this->_schema.fixed.length;
-
+Result MessageParser::_checkSchema() const {
+    if (static_cast<uint8_t>(_schema.commandSize) > MESSAGE_PARSER_CMD_LENGTH_CRC_BUFFER_SIZE) {
+        LOG_E("cmd length must not great than %d.", MESSAGE_PARSER_CMD_LENGTH_CRC_BUFFER_SIZE);
+        return Result::GeneralError;
+    }
+    if (static_cast<uint8_t>(_schema.crcSize) > MESSAGE_PARSER_CMD_LENGTH_CRC_BUFFER_SIZE) {
+        LOG_E("crc length must not great than %d.", MESSAGE_PARSER_CMD_LENGTH_CRC_BUFFER_SIZE);
+        return Result::GeneralError;
     }
 
-    void MessageParser::calculate_overhead()
-    {
-        uint32_t oh = 0;
-        MESSAGE_SCHEMA_RANGE lengthRange = this->_schema.dynamic.range;
-        if (lengthRange & MESSAGE_SCHEMA_RANGE_PREFIX)
-        {
-            oh += this->_schema.prefixSize;
-        }
-        if (lengthRange & MESSAGE_SCHEMA_RANGE_CMD)
-        {
-            oh += this->_schema.cmdLength;
-        }
-        if (lengthRange & MESSAGE_SCHEMA_RANGE_LENGTH)
-        {
-            oh += this->_schema.dynamic.lengthSize;
-        }
-        if (lengthRange & MESSAGE_SCHEMA_RANGE_ALTERDATA)
-        {
-            oh += this->_schema.alterDataSize;
-        }
-        if (lengthRange & MESSAGE_SCHEMA_RANGE_CRC)
-        {
-            oh += this->_schema.crc.length;
-        }
-        if (lengthRange & MESSAGE_SCHEMA_RANGE_SUFFIX)
-        {
-            oh += this->_schema.suffixSize;
-        }
-        this->_lengthOverhead = oh;
-        oh = 0;
-        if (this->_schema.mode == MESSAGE_SCHEMA_MODE_FIXED_LENGTH)
-        {
-            oh += this->_schema.prefixSize;
-            oh += this->_schema.cmdLength;
-            oh += this->_schema.alterDataSize;
-            oh += this->_schema.crc.length;
-            oh += this->_schema.suffixSize;
-        }
-        else if (this->_schema.mode == MESSAGE_SCHEMA_MODE_DYNAMIC_LENGTH)
-        {
-            oh += this->_schema.prefixSize;
-            oh += this->_schema.cmdLength;
-            oh += this->_schema.dynamic.lengthSize;
-            oh += this->_schema.alterDataSize;
-            oh += this->_schema.crc.length;
-            oh += this->_schema.suffixSize;
-        }
-        else if (this->_schema.mode == MESSAGE_SCHEMA_MODE_FREE_LENGTH)
-        {
-            oh += this->_schema.prefixSize;
-            oh += this->_schema.cmdLength;
-            oh += this->_schema.alterDataSize;
-            oh += this->_schema.suffixSize;
-        }
-        this->_contentOverhead = oh;
-    }
-
-    Result MessageParser::check_schema() const
-    {
-
-        if (this->_schema.cmdLength > MESSAGE_PARSER_CMD_CRC_BUFFER_SIZE)
-        {
-            LOG_E("cmd length must not great than 4.");
-            return Result::GeneralError;
-        }
-        if (this->_schema.crc.length > MESSAGE_PARSER_CMD_CRC_BUFFER_SIZE)
-        {
-            LOG_E("crc length must not great than 4.");
-            return Result::GeneralError;
-        }
-
-        switch (this->_schema.mode)
-        {
-        case MESSAGE_SCHEMA_MODE_FIXED_LENGTH:
-            if (this->_schema.prefixSize == 0)
-            {
+    switch (_schema.mode) {
+        case MESSAGE_SCHEMA_MODE::FIXED_LENGTH:
+            if (_schema.prefixSize == 0) {
                 LOG_E("fixed mode: prefix size must not be 0.");
                 return Result::GeneralError;
             }
+
             break;
-        case MESSAGE_SCHEMA_MODE_DYNAMIC_LENGTH:
-            if (this->_schema.prefixSize == 0)
-            {
+        case MESSAGE_SCHEMA_MODE::DYNAMIC_LENGTH:
+            if (_schema.prefixSize == 0) {
                 LOG_E("dynamic mode: prefix size must not be 0.");
                 return Result::GeneralError;
             }
-            if (this->_schema.dynamic.lengthSize == 0)
-            {
+            if (_schema.dynamic.lengthSize == MESSAGE_SCHEMA_SIZE::NONE) {
                 LOG_E("dynamic mode: length size must not be 0.");
                 return Result::GeneralError;
             }
             break;
-        case MESSAGE_SCHEMA_MODE_FREE_LENGTH:
-            if (this->_schema.suffixSize == 0)
-            {
+        case MESSAGE_SCHEMA_MODE::FREE_LENGTH:
+            if (_schema.suffixSize == 0) {
                 LOG_E("free mode: suffix size must not be 0.");
                 return Result::GeneralError;
             }
-            if (this->_schema.crc.length != 0)
-            {
+            if (_schema.crcSize != MESSAGE_SCHEMA_SIZE::NONE) {
                 LOG_E("free mode: crc not supported.");
                 return Result::GeneralError;
             }
             break;
         default:
             break;
-        }
+    }
 
-        return Result::OK;
+    return Result::OK;
+}
+
+bool MessageParser::_seek(const uint8_t (&pattern)[MESSAGE_SCHEMA_PERFIX_SUFFIX_MAX_SIZE],
+                          uint8_t patternSize) {
+    uint32_t totalLength = _buffer.getSize();
+    auto offset = _offset;
+    while ((offset + patternSize) <= totalLength) {
+        auto matched = true;
+        for (int i = 0; i < patternSize; ++i) {
+            if (pattern[i] != *_buffer.peekPtr(offset + i)) {
+                matched = false;
+                break;
+            }
+        }
+        if (matched) {
+            _offset = offset;
+            return true;
+        }
+        offset++;
+    }
+    _offset = offset;
+    return false;
+};
+
+int32_t MessageParser::_match(const uint8_t (&pattern)[MESSAGE_SCHEMA_PERFIX_SUFFIX_MAX_SIZE],
+                              uint8_t patternSize) {
+    uint32_t totalLength = _buffer.getSize();
+    if (_offset + patternSize > totalLength) {
+        return -1;
+    }
+    for (int i = 0; i < patternSize; ++i) {
+        if (pattern[i] != *_buffer.peekPtr(_offset + i)) {
+            return 0;
+        }
+    }
+    _offset += patternSize;
+    return 1;
+}
+
+bool MessageParser::_fetch(uint8_t* data, uint16_t length) {
+    if (_offset + length > _buffer.getSize()) {
+        return false;
+    }
+    _buffer.peek(data, _offset, length);
+    _offset += length;
+    return true;
+}
+
+bool MessageParser::_move(uint16_t length) {
+    if (_offset + length > _buffer.getSize()) {
+        return false;
+    }
+    _offset += length;
+    return true;
+}
+
+uint32_t MessageParser::_parseLength(
+    uint8_t (&buf)[MESSAGE_PARSER_CMD_LENGTH_CRC_BUFFER_SIZE]) const {
+    if (_schema.dynamic.lengthSize == MESSAGE_SCHEMA_SIZE::BIT8) {
+        return buf[0];
+    } else if (_schema.dynamic.lengthSize == MESSAGE_SCHEMA_SIZE::BIT16) {
+        return getUint16(static_cast<uint8_t*>(buf),
+                         _schema.dynamic.endian == MESSAGE_SCHEMA_LENGTH_ENDIAN::LITTLE);
+    } else if (_schema.dynamic.lengthSize == MESSAGE_SCHEMA_SIZE::BIT32) {
+        return getUint32(buf, _schema.dynamic.endian == MESSAGE_SCHEMA_LENGTH_ENDIAN::LITTLE);
+    } else {
+        return 0;
+    }
+}
+bool MessageParser::_remove(uint16_t length) {
+    if (length > _buffer.getSize()) {
+        return false;
+    }
+    _buffer.readVirtual(length);
+    _offset -= length;
+    return true;
+}
+
+void MessageParser::_prepareFrame() {
+    _freeContentStartIndex = 0;
+    _contentLength = 0;
+    for (uint8_t i = 0; i < MESSAGE_PARSER_CMD_LENGTH_CRC_BUFFER_SIZE; i++) {
+        _command[i] = 0;
+    }
+}
+
+Buffer8 MessageFrame::getPrefix() const {
+    return Buffer8{
+        .data = this->_buffer.data + this->_prefix.offset,
+        .size = this->_prefix.length,
     };
-} // namespace wibot::comm
+}
+Buffer8 MessageFrame::getCommand() const {
+    return Buffer8{
+        .data = this->_buffer.data + this->_command.offset,
+        .size = this->_command.length,
+    };
+}
+Buffer8 MessageFrame::getLength() const {
+    return Buffer8{
+        .data = this->_buffer.data + this->_length.offset,
+        .size = this->_length.length,
+    };
+}
+Buffer8 MessageFrame::getAlterData() const {
+    return Buffer8{
+        .data = this->_buffer.data + this->_alterData.offset,
+        .size = this->_alterData.length,
+    };
+}
+Buffer8 MessageFrame::getContent() const {
+    return Buffer8{
+        .data = this->_buffer.data + this->_content.offset,
+        .size = this->_content.length,
+    };
+}
+Buffer8 MessageFrame::getCrc() const {
+    return Buffer8{
+        .data = this->_buffer.data + this->_crc.offset,
+        .size = this->_crc.length,
+    };
+}
+Buffer8 MessageFrame::getSuffix() const {
+    return Buffer8{
+        .data = this->_buffer.data + this->_suffix.offset,
+        .size = this->_suffix.length,
+    };
+}
+
+Buffer8 MessageFrame::getFrameData() const {
+    return Buffer8{
+        .data = this->_buffer.data,
+        .size = this->_frameLength,
+    };
+}
+
+}  // namespace wibot::comm

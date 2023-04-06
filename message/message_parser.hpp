@@ -1,45 +1,39 @@
 #ifndef __WWTALK_MESSAGE_PARSER_HPP__
 #define __WWTALK_MESSAGE_PARSER_HPP__
 
+#include "CircularBuffer.hpp"
 #include "base.hpp"
-#include "ringbuffer.hpp"
-namespace wibot::comm
-{
+#include "buffer.hpp"
+namespace wibot::comm {
 #define Result_CONTENT_NOT_ENOUGH Result_USER_DEFINE_START + 1
 
-#define MESSAGE_PARSER_CMD_CRC_BUFFER_SIZE 4
+#define MESSAGE_PARSER_CMD_LENGTH_CRC_BUFFER_SIZE 4
+#define MESSAGE_SCHEMA_PERFIX_SUFFIX_MAX_SIZE 8
 
-    enum MESSAGE_PARSER_STAGE
-    {
-        MESSAGE_PARSE_STAGE_INIT =
-        0, // schema is changed, reset everything, reparse current buffer.
-        MESSAGE_PARSE_STAGE_PREPARING,      // Prepare to parse a new message.
-        MESSAGE_PARSE_STAGE_SEEKING_PREFIX, // try to seek the message's begin
-        // flags.
-        MESSAGE_PARSE_STAGE_PARSING_CMD,    // try to parse cmd of the message.
-        MESSAGE_PARSE_STAGE_PARSING_LENGTH, // try to parse the length of the
-        // message.
-        MESSAGE_PARSE_STAGE_PARSING_ALTERDATA,
-        MESSAGE_PARSE_STAGE_SEEKING_CONTENT, // try to
-        MESSAGE_PARSE_STAGE_SEEKING_CRC,
-        MESSAGE_PARSE_STAGE_MATCHING_SUFFIX,
-        MESSAGE_PARSE_STAGE_SEEKING_SUFFIX,
-        MESSAGE_PARSE_STAGE_DONE,
-    };
-    enum MESSAGE_SCHEMA_MODE
-    {
-        MESSAGE_SCHEMA_MODE_FIXED_LENGTH = 0,
-        MESSAGE_SCHEMA_MODE_DYNAMIC_LENGTH,
-        MESSAGE_SCHEMA_MODE_FREE_LENGTH,
-    };
-    enum MESSAGE_SCHEMA_SIZE
-    {
-        MESSAGE_SCHEMA_SIZE_NONE = 0,
-        MESSAGE_SCHEMA_SIZE_8BITS = 1,
-        MESSAGE_SCHEMA_SIZE_16BITS = 2,
-        MESSAGE_SCHEMA_SIZE_24BITS = 3,
-        MESSAGE_SCHEMA_SIZE_32BITS = 4,
-    };
+enum class MESSAGE_PARSE_STAGE : uint8_t {
+    INIT = 0,         // schema is changed, reset everything, reparse current buffer.
+    PREPARING,        // Prepare to parse a new message.
+    SEEKING_PREFIX,   // try to seek the message's begin flags.
+    PARSING_CMD,      // try to parse cmd of the message.
+    PARSING_LENGTH,   // try to parse the length of the message.
+    PARSING_ALTERDATA,
+    SEEKING_CONTENT,  // try to
+    SEEKING_CRC,
+    MATCHING_SUFFIX,
+    DONE,
+};
+enum class MESSAGE_SCHEMA_MODE : uint8_t {
+    FIXED_LENGTH = 0,
+    DYNAMIC_LENGTH,
+    FREE_LENGTH,
+};
+enum class MESSAGE_SCHEMA_SIZE : uint8_t {
+    NONE = 0,
+    BIT8 = 1,
+    BIT16 = 2,
+    BIT24 = 3,
+    BIT32 = 4,
+};
 
 #define MESSAGE_SCHEMA_RANGE uint8_t
 #define MESSAGE_SCHEMA_RANGE_PREFIX 0x01
@@ -51,31 +45,27 @@ namespace wibot::comm
 #define MESSAGE_SCHEMA_RANGE_SUFFIX 0x40
 #define MESSAGE_SCHEMA_RANGE_ALL 0x7F
 
-    enum MESSAGE_SCHEMA_LENGTH_ENDIAN
-    {
-        MESSAGE_SCHEMA_LENGTH_ENDIAN_LITTLE = 0,
-        MESSAGE_SCHEMA_LENGTH_ENDIAN_BIG,
-    };
+enum class MESSAGE_SCHEMA_LENGTH_ENDIAN : uint8_t {
+    LITTLE = 0,
+    BIG,
+};
 
-    enum MESSAGE_SCHEMA_CRC_MODE
-    {
-        MESSAGE_SCHEMA_CRC_MODE_8BIT_FLETCHER,
+enum MESSAGE_SCHEMA_CRC_MODE {
+    MESSAGE_SCHEMA_CRC_MODE_8BIT_FLETCHER,
 
-    };
+};
 
-    class CrcCaculator
-    {
-     public:
-        virtual void reset() = 0;
-        virtual void next(const uint8_t* data, uint32_t length) = 0;
-        virtual bool compare(const uint8_t* crc) = 0;
-    };
+class CrcCaculator {
+   public:
+    virtual void reset() = 0;
+    virtual void next(const uint8_t* data, uint32_t length) = 0;
+    virtual bool compare(const uint8_t* crc) = 0;
+};
 
-    struct MessageSchemaFixedLengthDefinition
-    {
-        uint8_t command[MESSAGE_PARSER_CMD_CRC_BUFFER_SIZE];
-        uint32_t length;
-    };
+struct MessageSchemaFixedLengthDefinition {
+    uint8_t command[MESSAGE_PARSER_CMD_LENGTH_CRC_BUFFER_SIZE];
+    uint32_t length;
+};
 
 /**
  * @brief
@@ -86,133 +76,233 @@ namespace wibot::comm
  * free    :
  * | (prefix) | (cmd)          | (alterData) | (content)         |  suffix  |
  */
-    struct MessageSchema
-    {
-        uint8_t prefix[8];
-        uint8_t prefixSize; // prefix size. 1-8, prefix size must not be 0, except
-        // stream mode.
-        MESSAGE_SCHEMA_MODE mode;
-        MESSAGE_SCHEMA_SIZE cmdLength; // cmd size. 0-4.
+struct MessageSchema {
+    MESSAGE_SCHEMA_MODE mode;
+    uint8_t prefix[MESSAGE_SCHEMA_PERFIX_SUFFIX_MAX_SIZE];
+    uint8_t prefixSize;               // prefix size. 1-8, prefix size must not be 0, except
 
-        union
-        {
-            struct
-            {
-                /**
-                 * @brief The length of (content) in bytes.
-                 * @note Must not be 0.
-                 */
-                uint32_t length;
+    MESSAGE_SCHEMA_SIZE commandSize;  // cmd size. 0-4.
 
-                /**
-                 * multi length definitions witch match the command.
-                 */
-                MessageSchemaFixedLengthDefinition* definitions;
-                uint32_t definitionCount;
+    union {
+        struct {
+            /**
+             * @brief The length of (content) in bytes.
+             * @note Must not be 0.
+             */
+            uint32_t length;
 
-            } fixed;
-            struct
-            {
-                MESSAGE_SCHEMA_SIZE lengthSize; // the size of the length field.
-                MESSAGE_SCHEMA_LENGTH_ENDIAN endian;
-                MESSAGE_SCHEMA_RANGE range;
-
-            } dynamic;
-        };
-
-        MESSAGE_SCHEMA_SIZE alterDataSize;
-
-        struct
-        {
-            // CrcCaculator* calulator;
-            MESSAGE_SCHEMA_SIZE length;
+            /**
+             * multi length definitions witch match the command.
+             */
+            MessageSchemaFixedLengthDefinition* definitions;
+            uint32_t definitionCount;
+        } fixed;
+        struct {
+            MESSAGE_SCHEMA_SIZE lengthSize;  // the size of the length field.
+            MESSAGE_SCHEMA_LENGTH_ENDIAN endian;
             MESSAGE_SCHEMA_RANGE range;
-        } crc;
-        uint8_t suffix[8];
-        uint8_t suffixSize; // suffix size. 0-8, 0 meaning that suffix is not
-        // present. if mode = free, this field must not be 0.
-
-        bool operator==(const MessageSchema& other) const;
-    };
-    class MessageParser;
-
-    struct MessageFrame
-    {
-     public:
-        void fill(MessageParser* parser);
-
-        Result release();
-        Result extract(uint8_t* buffer);
-        Result content_extract(uint8_t* buffer);
-        Result peek(uint32_t offset, uint8_t* data);
-        Result content_peek(uint32_t offset, uint8_t* data);
-
-        uint8_t cmd[MESSAGE_PARSER_CMD_CRC_BUFFER_SIZE];
-        int32_t length;
-        uint8_t alterData[MESSAGE_PARSER_CMD_CRC_BUFFER_SIZE];
-        int32_t contentStartOffset;
-        int32_t contentLength;
-        uint8_t crc[MESSAGE_PARSER_CMD_CRC_BUFFER_SIZE];
-
-     private:
-        MessageParser* _parser;
-        bool _released;
+        } dynamic;
     };
 
-    class MessageParser
-    {
-     public:
-        MessageParser(RingBuffer& buffer, uint32_t lengthLimit = 1024) : buffer(buffer)
-        {
-            _lengthLimit = lengthLimit;
-        };
+    MESSAGE_SCHEMA_SIZE alterDataSize;
 
-        Result init(const MessageSchema& schema);
-        Result frame_get(MessageFrame& parsedFrame);
+    MESSAGE_SCHEMA_SIZE crcSize;
+    MESSAGE_SCHEMA_RANGE crcRange;
+    uint8_t suffix[MESSAGE_SCHEMA_PERFIX_SUFFIX_MAX_SIZE];
+    uint8_t suffixSize;  // suffix size. 0-8, 0 meaning that suffix is not
+    // present. if mode = free, this field must not be 0.
 
-     private:
-        friend class MessageFrame;
-
-        uint32_t _lengthLimit;
-        MessageSchema _schema;
-        uint32_t _lengthOverhead;
-        uint32_t _contentOverhead;
-        RingBuffer& buffer;
-        int32_t _seekOffset; // current working seek offset. initial value is -1.
-        int8_t _patternMatchedCount;
-        uint8_t _cmd[MESSAGE_PARSER_CMD_CRC_BUFFER_SIZE];
-        uint8_t _alterData[MESSAGE_PARSER_CMD_CRC_BUFFER_SIZE];
-        int32_t _packetStartOffset;
-        uint8_t _crc[MESSAGE_PARSER_CMD_CRC_BUFFER_SIZE];
-        /**
-         * @brief The value represents content length that been parsed, if block has fixed length.
-         */
-        int32_t _frameExpectContentLength;
-        int32_t _frameActualContentLength; // Frame content length that has been parsed.
-
-        MESSAGE_PARSER_STAGE _stage;
-        int8_t _prefixPatternNexts[8];
-        int8_t _suffixPatternNexts[8];
-
-        void calculate_overhead();
-        Result check_schema() const;
-
-        void _context_init(const MessageSchema* schema);
-        void _context_preparing();
-        bool _chars_seek(const uint8_t (& pattern)[8], const int8_t (& next)[8],
-            uint8_t patternSize);
-        int8_t _content_try_scan(uint32_t expectLength, uint8_t* data);
-        int8_t _int_try_scan(MESSAGE_SCHEMA_SIZE size,
-            MESSAGE_SCHEMA_LENGTH_ENDIAN endian, uint32_t* value);
-        int8_t _content_scan(uint32_t expectLength, uint32_t* scanedLength);
-        int8_t _chars_scan(const uint8_t (& pattern)[8], uint8_t size);
-
-        static void _pattern_next_generate(const uint8_t pattern[], uint8_t M,
-            int8_t next[]);
-
-        uint32_t length_definition_match();
+    uint32_t getContentOverhead() const {
+        uint32_t oh = 0;
+        if (mode == MESSAGE_SCHEMA_MODE::FIXED_LENGTH) {
+            oh += prefixSize;
+            oh += static_cast<uint8_t>(commandSize);
+            oh += static_cast<uint8_t>(alterDataSize);
+            oh += static_cast<uint8_t>(crcSize);
+            oh += suffixSize;
+        } else if (mode == MESSAGE_SCHEMA_MODE::DYNAMIC_LENGTH) {
+            oh += prefixSize;
+            oh += static_cast<uint8_t>(commandSize);
+            oh += static_cast<uint8_t>(dynamic.lengthSize);
+            oh += static_cast<uint8_t>(alterDataSize);
+            oh += static_cast<uint8_t>(crcSize);
+            oh += suffixSize;
+        } else if (mode == MESSAGE_SCHEMA_MODE::FREE_LENGTH) {
+            oh += prefixSize;
+            oh += static_cast<uint8_t>(commandSize);
+            oh += static_cast<uint8_t>(alterDataSize);
+            oh += suffixSize;
+        }
+        return oh;
     };
 
-} // namespace wibot::comm
+    uint32_t getDynamicLengthOverhead() const {
+        uint32_t oh = 0;
+        if (mode == MESSAGE_SCHEMA_MODE::DYNAMIC_LENGTH) {
+            MESSAGE_SCHEMA_RANGE lengthRange = dynamic.range;
+            if (lengthRange & MESSAGE_SCHEMA_RANGE_PREFIX) {
+                oh += prefixSize;
+            }
+            if (lengthRange & MESSAGE_SCHEMA_RANGE_CMD) {
+                oh += static_cast<uint8_t>(commandSize);
+            }
+            if (lengthRange & MESSAGE_SCHEMA_RANGE_LENGTH) {
+                oh += static_cast<uint8_t>(dynamic.lengthSize);
+            }
+            if (lengthRange & MESSAGE_SCHEMA_RANGE_ALTERDATA) {
+                oh += static_cast<uint8_t>(alterDataSize);
+            }
+            if (lengthRange & MESSAGE_SCHEMA_RANGE_CRC) {
+                oh += static_cast<uint8_t>(crcSize);
+            }
+            if (lengthRange & MESSAGE_SCHEMA_RANGE_SUFFIX) {
+                oh += suffixSize;
+            }
+        }
+        return oh;
+    }
 
-#endif // __WWTALK_MESSAGE_PARSER_HPP__
+    /**
+     * @brief Get the length of the content.
+     * @param contentLength The length of the content. @note contentLength is ignored if the mode is
+     * fixed
+     * @return
+     */
+    uint32_t getLength(uint32_t contentLength) const {
+        if (mode == MESSAGE_SCHEMA_MODE::FIXED_LENGTH) {
+            return getContentOverhead() + fixed.length;
+        } else if (mode == MESSAGE_SCHEMA_MODE::DYNAMIC_LENGTH) {
+            return contentLength + getContentOverhead();
+        } else {
+            return contentLength + getContentOverhead();
+        }
+    }
+};
+class MessageParser;
+
+struct MessageFrameSegment {
+    uint16_t offset;
+    uint16_t length;
+};
+struct MessageFrame {
+   public:
+    MessageFrame(Buffer8 buffer) : _buffer(buffer) {}
+    MessageFrame(Buffer8 buffer, const MessageSchema& schema, uint32_t contentLength)
+        : MessageFrame(buffer) {
+        _prefix.offset = 0;
+        _prefix.length = schema.prefixSize;
+        _command.offset = _prefix.offset + _prefix.length;
+        _command.length = static_cast<uint8_t>(schema.commandSize);
+        _length.offset = _command.offset + _command.length;
+        _length.length = static_cast<uint8_t>(schema.dynamic.lengthSize);
+        _alterData.offset = _length.offset + _length.length;
+        _alterData.length = static_cast<uint8_t>(schema.alterDataSize);
+        _content.offset = _alterData.offset + _alterData.length;
+        _content.length = contentLength;
+        _crc.offset = _content.offset + _content.length;
+        _crc.length = static_cast<uint8_t>(schema.crcSize);
+        _suffix.offset = _crc.offset + _crc.length;
+        _suffix.length = schema.suffixSize;
+        _frameLength = schema.getLength(contentLength);
+    }
+
+    Buffer8 getPrefix() const;
+    Buffer8 getCommand() const;
+    Buffer8 getLength() const;
+    Buffer8 getAlterData() const;
+    Buffer8 getContent() const;
+    Buffer8 getCrc() const;
+    Buffer8 getSuffix() const;
+    Buffer8 getFrameData() const;
+
+   private:
+    friend class MessageParser;
+    MessageFrameSegment _prefix;
+    MessageFrameSegment _command;
+    MessageFrameSegment _length;
+    MessageFrameSegment _alterData;
+    MessageFrameSegment _content;
+    MessageFrameSegment _crc;
+    MessageFrameSegment _suffix;
+    Buffer8 _buffer;
+    uint32_t _frameLength;
+};
+
+class MessageParser {
+   public:
+    MessageParser(CircularBuffer<uint8_t>& buffer) : _buffer(buffer){};
+
+    Result init(const MessageSchema& schema);
+    Result parse(MessageFrame* parsedFrame);
+
+   private:
+    CircularBuffer<uint8_t>& _buffer;
+    MessageSchema _schema;
+    uint32_t _lengthOverhead;
+    uint32_t _contentOverhead;
+
+    MESSAGE_PARSE_STAGE _stage;
+    uint32_t _offset;  // current working seek offset. initial value is -1.
+    uint32_t _contentLength;
+    uint32_t _freeContentStartIndex;
+    MessageFrame* _frame;
+    uint8_t _command[MESSAGE_PARSER_CMD_LENGTH_CRC_BUFFER_SIZE];
+    Result _checkSchema() const;
+
+    /**
+     * seek the pattern in the buffer, from the current offset to the end.
+     * if found, the offset will be set to the beginning of the pattern.
+     * otherwise the offset will set to seek position.
+     * @param pattern
+     * @param patternSize
+     * @return Return true if the pattern is found, otherwise false.
+     */
+    bool _seek(const uint8_t (&pattern)[MESSAGE_SCHEMA_PERFIX_SUFFIX_MAX_SIZE],
+               uint8_t patternSize);
+
+    /**
+     * match the pattern in the buffer, at the current offset. if matched, the
+     * offset will be set to the the next position of the pattern. otherwise the
+     * offset will not be changed.
+     * @param pattern
+     * @param patternSize
+     * @return If matched, return 1, not matched, return 0, no enough space
+     * return -1.
+     */
+    int32_t _match(const uint8_t (&pattern)[MESSAGE_SCHEMA_PERFIX_SUFFIX_MAX_SIZE],
+                   uint8_t patternSize);
+
+    /**
+     * @brief fetch data from the buffer, at the current offset, and move the
+     * offset to the next position.
+     * @param data
+     * @param length
+     * @return Return true if the data is fetched successfully, otherwise false.
+     */
+    bool _fetch(uint8_t* data, uint16_t length);
+
+    /**
+     * @brief move the offset to the next position.
+     * @param length
+     * @return Return true if the offset is moved successfully, otherwise false.
+     */
+    bool _move(uint16_t length);
+
+    /**
+     * @brief remove data from the buffer, at the current offset, and sync the
+     * offset.
+     * @param length
+     * @return Return true if the data is removed successfully, otherwise false.
+     */
+    bool _remove(uint16_t length);
+
+    uint32_t _lengthDefinitionMatch();
+
+    uint32_t _parseLength(uint8_t (&buf)[MESSAGE_PARSER_CMD_LENGTH_CRC_BUFFER_SIZE]) const;
+
+    void _prepareFrame();
+};
+
+}  // namespace wibot::comm
+
+#endif  // __WWTALK_MESSAGE_PARSER_HPP__
