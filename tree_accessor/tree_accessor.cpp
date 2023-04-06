@@ -2,10 +2,11 @@
 
 #include "tree_accessor.hpp"
 
- #include <string.h>
+#include <string.h>
 
- #define LOG_MODULE "tree_accessor"
- #include "log.h"
+#include "log.h"
+LOGGER("tree_accessor")
+
  using namespace wibot::comm
  {
 
@@ -235,11 +236,11 @@
                       ^                                      |
                       |-------------- / ----------------------
  */
- #if defined(__GNUC__)
- #pragma GCC diagnostic ignored "-Wunused-label"
- #elif defined(__clang__)
- #pragma clang diagnostic ignored "-Wunused-label"
- #endif
+#if defined(__GNUC__)
+#pragma GCC diagnostic ignored "-Wunused-label"
+#elif defined(__clang__)
+#pragma clang diagnostic ignored "-Wunused-label"
+#endif
  static bool _tree_accessor_path_parse(TreeAccessor *tree, const char *path) {
      if (path == NULL || !strcmp(path, "")) {
          return false;
@@ -251,8 +252,7 @@
      const char *id;
      int32_t idSize;
      TreeAccessorContext *ctx = &tree->context;
- #define next_token()                                                           \
-     t = _tree_accessor_next_token(path, &token, &path, &tokenSize)
+#define next_token() t = _tree_accessor_next_token(path, &token, &path, &tokenSize)
      next_token();
  n00:
      if (t == token_slash) {
@@ -395,10 +395,10 @@
                                                     char const **token,
                                                     char const **end,
                                                     int32_t *size) {
- #define next()                                                                 \
-     do {                                                                       \
-         c = *path++;                                                           \
-     } while (0)
+#define next()       \
+    do {             \
+        c = *path++; \
+    } while (0)
      char c;
      next();
      while (isblank(c)) {

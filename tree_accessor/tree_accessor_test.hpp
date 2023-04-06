@@ -6,9 +6,7 @@
 
 // namespace wibot::comm::test {
 
-
 // void tree_accessor_test();
-
 
 // } // namespace wibot::comm::test
 

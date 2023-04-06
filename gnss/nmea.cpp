@@ -127,11 +127,11 @@ bool NmeaSentenceBase::match(const char* sentence) {
 bool NmeaSentenceRMC::parse(void* frame, const char* sentence) {
     NmeaSentenceDataRmc* data = (NmeaSentenceDataRmc*)frame;
     // $GPRMC,081836,A,3751.65,S,14507.36,E,000.0,360.0,130998,011.3,E*62
-    char type[6];
-    char validity;
-    int latitude_direction;
-    int longitude_direction;
-    int variation_direction;
+    char                 type[6];
+    char                 validity;
+    int                  latitude_direction;
+    int                  longitude_direction;
+    int                  variation_direction;
     if (!Sentence::scan(sentence, "tTcfdfdffDfd", type, &data->time, &validity, &data->latitude,
                         &latitude_direction, &data->longitude, &longitude_direction, &data->speed,
                         &data->course, &data->date, &data->variation, &variation_direction))
@@ -150,8 +150,8 @@ bool NmeaSentenceGGA::parse(void* frame, const char* sentence) {
     // $GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*47
     auto data = (NmeaSentenceDataGga*)frame;
     char type[6];
-    int latitude_direction;
-    int longitude_direction;
+    int  latitude_direction;
+    int  longitude_direction;
 
     if (!Sentence::scan(sentence, "tTfdfdiiffcfcf_", type, &data->time, &data->latitude,
                         &latitude_direction, &data->longitude, &longitude_direction,
@@ -186,8 +186,8 @@ bool NmeaSentenceGLL::parse(void* frame, const char* sentence) {
     auto data = (NmeaSentenceDataGll*)frame;
     // $GPGLL,3723.2475,N,12158.3416,W,161229.487,A,A*41$;
     char type[6];
-    int latitude_direction;
-    int longitude_direction;
+    int  latitude_direction;
+    int  longitude_direction;
 
     if (!Sentence::scan(sentence, "tfdfdTc;c", type, &data->latitude, &latitude_direction,
                         &data->longitude, &longitude_direction, &data->time, &data->status,
@@ -320,7 +320,8 @@ uint8_t Sentence::checksum(const char* sentence) {
     uint8_t checksum = 0x00;
 
     // The optional reducer is an XOR of all bytes between "$" and "*".
-    while (*sentence && *sentence != '*') checksum ^= *sentence++;
+    while (*sentence && *sentence != '*')
+        checksum ^= *sentence++;
 
     return checksum;
 };
@@ -346,14 +347,14 @@ bool Sentence::talker_id(char talker[3], const char* sentence) {
  * Returns true on success. See library source code for details.
  */
 bool Sentence::scan(const char* sentence, const char* format, ...) {
-    bool result = false;
-    bool optional = false;
-    uint8_t crc = 0;
+    bool    result   = false;
+    bool    optional = false;
+    uint8_t crc      = 0;
     va_list ap;
     va_start(ap, format);
 
     const char* field = sentence;
-    char c = *sentence;
+    char        c     = *sentence;
 #define next_field()                            \
     do {                                        \
         /* Progress to the next field. */       \
@@ -364,7 +365,7 @@ bool Sentence::scan(const char* sentence, const char* format, ...) {
         /* Make sure there is a field there. */ \
         if (c == ',') {                         \
             crc ^= c;                           \
-            c = *++sentence;                    \
+            c     = *++sentence;                \
             field = sentence;                   \
         } else {                                \
             field = NULL;                       \
@@ -416,7 +417,7 @@ bool Sentence::scan(const char* sentence, const char* format, ...) {
             } break;
 
             case 'f': {  // Fractional value with scale (struct NmeaFloat).
-                int sign = 0;
+                int           sign  = 0;
                 int_least32_t value = -1;
                 int_least32_t scale = 0;
 
@@ -485,7 +486,8 @@ bool Sentence::scan(const char* sentence, const char* format, ...) {
                 char* buf = va_arg(ap, char*);
 
                 if (field) {
-                    while (minmea_isfield(*field)) *buf++ = *field++;
+                    while (minmea_isfield(*field))
+                        *buf++ = *field++;
                 }
 
                 *buf = '\0';
@@ -517,14 +519,14 @@ bool Sentence::scan(const char* sentence, const char* format, ...) {
                     char dArr[] = {field[0], field[1], '\0'};
                     char mArr[] = {field[2], field[3], '\0'};
                     char yArr[] = {field[4], field[5], '\0'};
-                    d = strtol(dArr, NULL, 10);
-                    m = strtol(mArr, NULL, 10);
-                    y = strtol(yArr, NULL, 10);
+                    d           = strtol(dArr, NULL, 10);
+                    m           = strtol(mArr, NULL, 10);
+                    y           = strtol(yArr, NULL, 10);
                 }
 
-                date->day = d;
+                date->day   = d;
                 date->month = m;
-                date->year = y;
+                date->year  = y;
             } break;
 
             case 'T': {  // Time (int, int, int, int), -1 if empty.
@@ -540,9 +542,9 @@ bool Sentence::scan(const char* sentence, const char* format, ...) {
                     char hArr[] = {field[0], field[1], '\0'};
                     char iArr[] = {field[2], field[3], '\0'};
                     char sArr[] = {field[4], field[5], '\0'};
-                    h = strtol(hArr, NULL, 10);
-                    i = strtol(iArr, NULL, 10);
-                    s = strtol(sArr, NULL, 10);
+                    h           = strtol(hArr, NULL, 10);
+                    i           = strtol(iArr, NULL, 10);
+                    s           = strtol(sArr, NULL, 10);
                     field += 6;
 
                     // Extra: fractional time. Saved as microseconds.
@@ -559,9 +561,9 @@ bool Sentence::scan(const char* sentence, const char* format, ...) {
                     }
                 }
 
-                time_->hours = h;
-                time_->minutes = i;
-                time_->seconds = s;
+                time_->hours        = h;
+                time_->minutes      = i;
+                time_->seconds      = s;
                 time_->microseconds = u;
             } break;
 
