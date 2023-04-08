@@ -1,8 +1,9 @@
 #include "message_parser.hpp"
 
 #include "arch.hpp"
-
+#include "CircularBuffer.hpp"
 #include "log.h"
+
 LOGGER("mp")
 namespace wibot::comm {
 uint32_t MessageSchema::getContentOverhead(const MessageLengthSchema* lengthSchema) const {

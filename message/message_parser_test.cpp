@@ -2,6 +2,7 @@
 
 #include "minunit.h"
 #include "string.h"
+#include "CircularBuffer.hpp"
 
 LOGGER("message_parser_test")
 
