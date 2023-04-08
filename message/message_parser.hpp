@@ -166,7 +166,7 @@ class MessageParser {
     void   reset();
 
    private:
-    CircularBuffer<uint8_t>&   _buffer;
+    CircularBuffer8&           _buffer;
     MessageSchema              _schema;
     MESSAGE_PARSE_STAGE        _stage;
     uint32_t                   _offset;  // current working seek offset. initial value is -1.
