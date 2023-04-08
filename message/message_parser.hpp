@@ -132,6 +132,13 @@ struct MessageFrame {
    public:
     MessageFrame(Buffer8 buffer) : _buffer(buffer) {
     }
+    /**
+     * @brief Construct a new Message Frame object, used for sending.
+     * @param buffer
+     * @param schema
+     * @param lengthSchema
+     * @param contentLength
+     */
     MessageFrame(Buffer8 buffer, const MessageSchema& schema,
                  const MessageLengthSchema& lengthSchema, uint32_t contentLength);
 
