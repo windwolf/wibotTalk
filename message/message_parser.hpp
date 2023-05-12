@@ -10,7 +10,7 @@ namespace wibot::comm {
 using namespace wibot::arch;
 
 #define MESSAGE_PARSER_CMD_LENGTH_CRC_BUFFER_SIZE 4
-#define MESSAGE_SCHEMA_PERFIX_SUFFIX_MAX_SIZE     8
+#define MESSAGE_SCHEMA_PERFIX_SUFFIX_MAX_SIZE 8
 
 enum class MESSAGE_PARSE_STAGE : uint8_t {
     INIT = 0,         // schema is changed, reset everything, reparse current buffer.
@@ -30,26 +30,26 @@ enum class MESSAGE_LENGTH_SCHEMA_MODE : uint8_t {
     FREE_LENGTH,
 };
 enum class MESSAGE_SCHEMA_SIZE : uint8_t {
-    NONE  = 0,
-    BIT8  = 1,
+    NONE = 0,
+    BIT8 = 1,
     BIT16 = 2,
     BIT24 = 3,
     BIT32 = 4,
 };
 
-#define MESSAGE_SCHEMA_RANGE           uint8_t
-#define MESSAGE_SCHEMA_RANGE_PREFIX    0x01
-#define MESSAGE_SCHEMA_RANGE_CMD       0x02
-#define MESSAGE_SCHEMA_RANGE_LENGTH    0x04
+#define MESSAGE_SCHEMA_RANGE uint8_t
+#define MESSAGE_SCHEMA_RANGE_PREFIX 0x01
+#define MESSAGE_SCHEMA_RANGE_CMD 0x02
+#define MESSAGE_SCHEMA_RANGE_LENGTH 0x04
 #define MESSAGE_SCHEMA_RANGE_ALTERDATA 0x08
-#define MESSAGE_SCHEMA_RANGE_CONTENT   0x10
-#define MESSAGE_SCHEMA_RANGE_CRC       0x20
-#define MESSAGE_SCHEMA_RANGE_SUFFIX    0x40
-#define MESSAGE_SCHEMA_RANGE_ALL       0x7F
+#define MESSAGE_SCHEMA_RANGE_CONTENT 0x10
+#define MESSAGE_SCHEMA_RANGE_CRC 0x20
+#define MESSAGE_SCHEMA_RANGE_SUFFIX 0x40
+#define MESSAGE_SCHEMA_RANGE_ALL 0x7F
 
 enum class MESSAGE_SCHEMA_LENGTH_ENDIAN : uint8_t {
-    LITTLE = 0,
-    BIG,
+    BIG = 0,
+    LITTLE,
 };
 
 enum MESSAGE_SCHEMA_CRC_MODE {
@@ -68,15 +68,15 @@ struct MessageLengthSchema {
 
         } fixed;
         struct {
-            MESSAGE_SCHEMA_SIZE          lengthSize;  // the size of the length field.
+            MESSAGE_SCHEMA_SIZE lengthSize;  // the size of the length field.
             MESSAGE_SCHEMA_LENGTH_ENDIAN endian;
-            MESSAGE_SCHEMA_RANGE         range;
+            MESSAGE_SCHEMA_RANGE range;
         } dynamic;
     };
 };
 
 struct MessageLengthSchemaDefinition {
-    uint8_t             command[MESSAGE_PARSER_CMD_LENGTH_CRC_BUFFER_SIZE];
+    uint8_t command[MESSAGE_PARSER_CMD_LENGTH_CRC_BUFFER_SIZE];
     MessageLengthSchema length;
 };
 
@@ -99,15 +99,15 @@ struct MessageSchema {
      * multi length definitions witch match the command.
      */
     MessageLengthSchemaDefinition* lengthSchemas;
-    uint32_t                       lengthSchemaCount;
-    MessageLengthSchema            defaultLength;
+    uint32_t lengthSchemaCount;
+    MessageLengthSchema defaultLength;
 
     MESSAGE_SCHEMA_SIZE alterDataSize;
 
-    MESSAGE_SCHEMA_SIZE  crcSize;
+    MESSAGE_SCHEMA_SIZE crcSize;
     MESSAGE_SCHEMA_RANGE crcRange;
-    uint8_t              suffix[MESSAGE_SCHEMA_PERFIX_SUFFIX_MAX_SIZE];
-    uint8_t              suffixSize;  // suffix size. 0-8, 0 meaning that suffix is not
+    uint8_t suffix[MESSAGE_SCHEMA_PERFIX_SUFFIX_MAX_SIZE];
+    uint8_t suffixSize;  // suffix size. 0-8, 0 meaning that suffix is not
     // present. if mode = free, this field must not be 0.
 
     uint32_t getContentOverhead(const MessageLengthSchema* lengthSchema) const;
@@ -130,8 +130,7 @@ struct MessageFrameSegment {
 };
 struct MessageFrame {
    public:
-    MessageFrame(Buffer8 buffer) : _buffer(buffer) {
-    }
+    MessageFrame(Buffer8 buffer) : _buffer(buffer) {}
     /**
      * @brief Construct a new Message Frame object, used for sending.
      * @param buffer
@@ -160,8 +159,8 @@ struct MessageFrame {
     MessageFrameSegment _content;
     MessageFrameSegment _crc;
     MessageFrameSegment _suffix;
-    Buffer8             _buffer;
-    uint32_t            _frameLength;
+    Buffer8 _buffer;
+    uint32_t _frameLength;
 };
 
 class MessageParser {
@@ -170,20 +169,19 @@ class MessageParser {
 
     Result init(const MessageSchema& schema);
     Result parse(MessageFrame* parsedFrame);
-    void   reset();
+    void reset();
 
    private:
-    CircularBuffer8&           _buffer;
-    MessageSchema              _schema;
-    MESSAGE_PARSE_STAGE        _stage;
-    uint32_t                   _offset;  // current working seek offset. initial value is -1.
-    uint32_t                   _freeContentStartIndex;
+    CircularBuffer8& _buffer;
+    MessageSchema _schema;
+    MESSAGE_PARSE_STAGE _stage;
+    uint32_t _offset;  // current working seek offset. initial value is -1.
+    uint32_t _freeContentStartIndex;
     const MessageLengthSchema* _lengthSchema;
-    uint32_t                   _contentLength;
-    uint32_t                   _contentOverhead;
-    uint32_t                   _lengthOverhead;
-    MessageFrame*              _frame;
-    uint8_t                    _command[MESSAGE_PARSER_CMD_LENGTH_CRC_BUFFER_SIZE];
+    uint32_t _contentLength;
+    uint32_t _contentOverhead;
+    MessageFrame* _frame;
+    uint8_t _command[MESSAGE_PARSER_CMD_LENGTH_CRC_BUFFER_SIZE];
 
     Result _checkSchema() const;
     Result _checkLengthSchema(const MessageLengthSchema* lengthSchema, bool isDefault) const;
